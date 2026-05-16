@@ -25,4 +25,9 @@ public class TrainerDao {
     public Optional<Trainer> findById(Long id) { return Optional.ofNullable(trainerStorage.get(id)); }
 
     public List<Trainer> findAll() { return new ArrayList<>(trainerStorage.values()); }
+
+    public boolean existsByUsername(String username) {
+        return trainerStorage.values().stream()
+                .anyMatch(trainer -> username.equals(trainer.getUsername()));
+    }
 }

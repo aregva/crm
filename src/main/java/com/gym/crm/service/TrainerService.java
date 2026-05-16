@@ -10,9 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -32,12 +30,8 @@ public class TrainerService {
     @Autowired public void setPasswordGenerator(PasswordGenerator passwordGenerator) { this.passwordGenerator = passwordGenerator; }
 
     public Trainer create(Trainer trainer) {
-        Set<String> existing = new HashSet<>();
-        trainerDao.findAll().forEach(t -> { if (t.getUsername() != null) existing.add(t.getUsername()); });
-        traineeDao.findAll().forEach(t -> { if (t.getUsername() != null) existing.add(t.getUsername()); });
-
         String base = usernameGenerator.generateBase(trainer.getFirstName(), trainer.getLastName());
-        trainer.setUsername(usernameGenerator.makeUnique(base, existing));
+        trainer.setUsername(usernameGenerator.makeUnique(base, this::usernameExists));
         trainer.setPassword(passwordGenerator.generate(10));
         trainer.setId(seq.getAndIncrement());
 
@@ -63,5 +57,9 @@ public class TrainerService {
 
         log.info("Updated trainer id={}", id);
         return Optional.of(t);
+    }
+
+    private boolean usernameExists(String username) {
+        return trainerDao.existsByUsername(username) || traineeDao.existsByUsername(username);
     }
 }

@@ -2,7 +2,7 @@ package com.gym.crm.util;
 
 import org.springframework.stereotype.Component;
 
-import java.util.Set;
+import java.util.function.Predicate;
 
 @Component
 public class UsernameGenerator {
@@ -10,10 +10,10 @@ public class UsernameGenerator {
         return firstName + "." + lastName;
     }
 
-    public String makeUnique(String base, Set<String> existing) {
-        if (!existing.contains(base)) return base;
+    public String makeUnique(String base, Predicate<String> usernameExists) {
+        if (!usernameExists.test(base)) return base;
         int i = 1;
-        while (existing.contains(base + i)) i++;
+        while (usernameExists.test(base + i)) i++;
         return base + i;
     }
 }

@@ -41,7 +41,7 @@ class TrainerServiceTest {
 
     @Test
     void create_SameAsPreloadedTrainer_ShouldAppendSerial() {
-        // preloaded: Mike.Brown from test-init-data.txt
+        // preloaded: Mike.Brown from trainers-data.txt
         Trainer tr = new Trainer();
         tr.setFirstName("Mike");
         tr.setLastName("Brown");

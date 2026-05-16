@@ -7,23 +7,23 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 @Configuration
 public class StorageConfig {
 
     @Bean("traineeStorage")
     public Map<Long, Trainee> traineeStorage() {
-        return new ConcurrentHashMap<>();
+        return new HashMap<>();
     }
 
     @Bean("trainerStorage")
     public Map<Long, Trainer> trainerStorage() {
-        return new ConcurrentHashMap<>();
+        return new HashMap<>();
     }
 
     @Bean("trainingStorage")
     public Map<Long, Training> trainingStorage() {
-        return new ConcurrentHashMap<>();
+        return new HashMap<>();
     }
 }

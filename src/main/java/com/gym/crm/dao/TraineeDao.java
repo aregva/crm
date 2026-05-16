@@ -26,5 +26,10 @@ public class TraineeDao {
 
     public List<Trainee> findAll() { return new ArrayList<>(traineeStorage.values()); }
 
+    public boolean existsByUsername(String username) {
+        return traineeStorage.values().stream()
+                .anyMatch(trainee -> username.equals(trainee.getUsername()));
+    }
+
     public void deleteById(Long id) { traineeStorage.remove(id); }
 }

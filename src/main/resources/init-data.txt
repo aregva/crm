@@ -1,2 +1,0 @@
-TRAINEE;Alice;Green;Boston
-TRAINER;Mike;Brown;Cardio

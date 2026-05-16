@@ -10,9 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -32,9 +30,8 @@ public class TraineeService {
     @Autowired public void setPasswordGenerator(PasswordGenerator passwordGenerator) { this.passwordGenerator = passwordGenerator; }
 
     public Trainee create(Trainee trainee) {
-        Set<String> existing = collectAllUsernames();
         String base = usernameGenerator.generateBase(trainee.getFirstName(), trainee.getLastName());
-        trainee.setUsername(usernameGenerator.makeUnique(base, existing));
+        trainee.setUsername(usernameGenerator.makeUnique(base, this::usernameExists));
         trainee.setPassword(passwordGenerator.generate(10));
         trainee.setId(seq.getAndIncrement());
         traineeDao.save(trainee);
@@ -69,10 +66,7 @@ public class TraineeService {
         return true;
     }
 
-    private Set<String> collectAllUsernames() {
-        Set<String> set = new HashSet<>();
-        traineeDao.findAll().forEach(t -> { if (t.getUsername() != null) set.add(t.getUsername()); });
-        trainerDao.findAll().forEach(t -> { if (t.getUsername() != null) set.add(t.getUsername()); });
-        return set;
+    private boolean usernameExists(String username) {
+        return traineeDao.existsByUsername(username) || trainerDao.existsByUsername(username);
     }
 }
