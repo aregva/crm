@@ -67,15 +67,15 @@ All mutating service operations are transactional where database state changes a
 The project uses **JUnit 5**, **Spring Test**, and **JaCoCo**.
 
 ### Implemented Tests
-- **`TraineeServiceTest`**: CRUD operations, username/password generation, duplicate handling.
-- **`TrainerServiceTest`**: CRUD operations, duplicate handling with init data.
-- **`TrainingServiceTest`**: Creation and selection logic.
+- **`TraineeServiceTest`**: CRUD operations, username/password generation, duplicate handling, authenticated updates, password validation, activation/deactivation, hard delete by username, and trainer assignment paths.
+- **`TrainerServiceTest`**: CRUD operations, duplicate handling with init data, required field validation, training type validation, authenticated updates, password changes, and activation/deactivation paths.
+- **`TrainingServiceTest`**: Creation and selection logic, required field validation, invalid FK/reference handling, authenticated access failures, and criteria-based training list queries.
 - **`StorageInitializationTest`**: Verifies data loading from split trainee and trainer resource files.
 - **`GymFacadeTest`**: End-to-end flow validation.
 - **`HibernateProfileFlowTest`**: Authenticated Hibernate profile, password, activation, training criteria, and trainer assignment flows.
 
 ### FIRST Principles
-- **Fast**: In-memory storage.
+- **Fast**: Embedded H2 database with Hibernate `create-drop` schema generation.
 - **Independent**: Isolated context.
 - **Repeatable**: Deterministic assertions.
 - **Self-validating**: Automatic verification.
@@ -84,8 +84,10 @@ The project uses **JUnit 5**, **Spring Test**, and **JaCoCo**.
 ### Execution Commands
 | Task | Command |
 | :--- | :--- |
-| **Run Tests** | `mvn clean test` |
-| **Generate Report** | `mvn jacoco:report` |
-| **Enforce Coverage (80%)** | `mvn jacoco:check` |
+| **Run Tests** | `./mvnw test` |
+| **Generate Report** | `./mvnw jacoco:report` |
+| **Enforce Coverage (80%)** | `./mvnw jacoco:check` |
 
 **Report Location**: `target/site/jacoco/index.html`
+
+Java 17 must be available on `PATH`, or `JAVA_HOME` must point to a valid JDK, before running Maven commands.
