@@ -3,9 +3,14 @@ package com.gym.crm;
 import com.gym.crm.config.AppConfig;
 import com.gym.crm.dao.TraineeDao;
 import com.gym.crm.dao.TrainerDao;
+import com.gym.crm.domain.Trainee;
+import com.gym.crm.domain.Trainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class StorageInitializationTest {
@@ -16,14 +21,18 @@ class StorageInitializationTest {
             TraineeDao traineeDao = ctx.getBean(TraineeDao.class);
             TrainerDao trainerDao = ctx.getBean(TrainerDao.class);
 
-            boolean aliceLoaded = traineeDao.findAll().stream()
-                    .anyMatch(t -> "Alice".equals(t.getFirstName()) && "Green".equals(t.getLastName()));
+            Optional<Trainee> alice = traineeDao.findAll().stream()
+                    .filter(t -> "Alice".equals(t.getFirstName()) && "Green".equals(t.getLastName()))
+                    .findFirst();
 
-            boolean mikeLoaded = trainerDao.findAll().stream()
-                    .anyMatch(t -> "Mike".equals(t.getFirstName()) && "Brown".equals(t.getLastName()));
+            Optional<Trainer> mike = trainerDao.findAll().stream()
+                    .filter(t -> "Mike".equals(t.getFirstName()) && "Brown".equals(t.getLastName()))
+                    .findFirst();
 
-            assertTrue(aliceLoaded);
-            assertTrue(mikeLoaded);
+            assertTrue(alice.isPresent());
+            assertEquals(10, alice.get().getPassword().length());
+            assertTrue(mike.isPresent());
+            assertEquals(10, mike.get().getPassword().length());
         }
     }
 }

@@ -1,33 +1,120 @@
 package com.gym.crm.service;
 
+import com.gym.crm.dao.TraineeDao;
+import com.gym.crm.dao.TrainerDao;
 import com.gym.crm.dao.TrainingDao;
+import com.gym.crm.dao.TrainingTypeDao;
+import com.gym.crm.domain.Trainee;
+import com.gym.crm.domain.Trainer;
 import com.gym.crm.domain.Training;
+import com.gym.crm.domain.TrainingType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class TrainingService {
     private static final Logger log = LoggerFactory.getLogger(TrainingService.class);
 
-    private final AtomicLong seq = new AtomicLong(1);
-    private TrainingDao trainingDao;
+    private final TrainingDao trainingDao;
+    private final TraineeDao traineeDao;
+    private final TrainerDao trainerDao;
+    private final TrainingTypeDao trainingTypeDao;
 
-    @Autowired
-    public void setTrainingDao(TrainingDao trainingDao) { this.trainingDao = trainingDao; }
-
-    public Training create(Training training) {
-        training.setId(seq.getAndIncrement());
-        trainingDao.save(training);
-        log.info("Created training id={}, name={}", training.getId(), training.getTrainingName());
-        return training;
+    public TrainingService(TrainingDao trainingDao,
+                           TraineeDao traineeDao,
+                           TrainerDao trainerDao,
+                           TrainingTypeDao trainingTypeDao) {
+        this.trainingDao = trainingDao;
+        this.traineeDao = traineeDao;
+        this.trainerDao = trainerDao;
+        this.trainingTypeDao = trainingTypeDao;
     }
 
+    @Transactional
+    public Training create(Training training) {
+        validateTraining(training);
+        resolveReferences(training);
+
+        Training saved = trainingDao.save(training);
+        log.info("Created training id={}, name={}", saved.getId(), saved.getTrainingName());
+        return saved;
+    }
+
+    @Transactional
+    public Training addTraining(String traineeUsername, String traineePassword, Training training) {
+        if (!traineeDao.passwordMatches(traineeUsername, traineePassword)) {
+            throw new SecurityException("Invalid trainee credentials");
+        }
+        Trainee trainee = traineeDao.findByUsername(traineeUsername).orElseThrow();
+        training.setTrainee(trainee);
+        return create(training);
+    }
+
+    @Transactional(readOnly = true)
     public Optional<Training> select(Long id) {
         return trainingDao.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Training> getTraineeTrainings(String traineeUsername,
+                                              String password,
+                                              LocalDate fromDate,
+                                              LocalDate toDate,
+                                              String trainerName,
+                                              String trainingType) {
+        if (!traineeDao.passwordMatches(traineeUsername, password)) {
+            throw new SecurityException("Invalid trainee credentials");
+        }
+        return trainingDao.findByTraineeCriteria(traineeUsername, fromDate, toDate, trainerName, trainingType);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Training> getTrainerTrainings(String trainerUsername,
+                                              String password,
+                                              LocalDate fromDate,
+                                              LocalDate toDate,
+                                              String traineeName) {
+        if (!trainerDao.passwordMatches(trainerUsername, password)) {
+            throw new SecurityException("Invalid trainer credentials");
+        }
+        return trainingDao.findByTrainerCriteria(trainerUsername, fromDate, toDate, traineeName);
+    }
+
+    private void validateTraining(Training training) {
+        ValidationUtils.requireNonNull(training, "training");
+        ValidationUtils.requireText(training.getTrainingName(), "trainingName");
+        ValidationUtils.requireNonNull(training.getTrainingDate(), "trainingDate");
+        ValidationUtils.requirePositive(training.getTrainingDurationMinutes(), "trainingDuration");
+        ValidationUtils.requireNonNull(training.getTrainingType(), "trainingType");
+        ValidationUtils.requireNonNull(training.getTraineeId(), "traineeId");
+        ValidationUtils.requireNonNull(training.getTrainerId(), "trainerId");
+    }
+
+    private void resolveReferences(Training training) {
+        Trainee trainee = traineeDao.findById(training.getTraineeId())
+                .orElseThrow(() -> new IllegalArgumentException("Trainee not found: " + training.getTraineeId()));
+        Trainer trainer = trainerDao.findById(training.getTrainerId())
+                .orElseThrow(() -> new IllegalArgumentException("Trainer not found: " + training.getTrainerId()));
+        TrainingType trainingType = resolveTrainingType(training.getTrainingType());
+
+        training.setTrainee(trainee);
+        training.setTrainer(trainer);
+        training.setTrainingType(trainingType);
+        trainee.getTrainers().add(trainer);
+    }
+
+    private TrainingType resolveTrainingType(TrainingType trainingType) {
+        if (trainingType.getId() != null) {
+            return trainingTypeDao.findById(trainingType.getId())
+                    .orElseThrow(() -> new IllegalArgumentException("Unknown training type id: " + trainingType.getId()));
+        }
+        return trainingTypeDao.findByName(trainingType.getTrainingTypeName())
+                .orElseThrow(() -> new IllegalArgumentException("Unknown training type: " + trainingType.getTrainingTypeName()));
     }
 }

@@ -1,35 +1,88 @@
 package com.gym.crm.dao;
 
 import com.gym.crm.domain.Trainee;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import com.gym.crm.domain.Trainer;
+import org.hibernate.SessionFactory;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Repository
+@Transactional(readOnly = true)
 public class TraineeDao {
+    private final SessionFactory sessionFactory;
 
-    private Map<Long, Trainee> traineeStorage;
-
-    @Autowired
-    public void setTraineeStorage(@Qualifier("traineeStorage") Map<Long, Trainee> traineeStorage) {
-        this.traineeStorage = traineeStorage;
+    public TraineeDao(SessionFactory sessionFactory) {
+        this.sessionFactory = sessionFactory;
     }
 
-    public void save(Trainee trainee) { traineeStorage.put(trainee.getId(), trainee); }
+    @Transactional
+    public Trainee save(Trainee trainee) {
+        return sessionFactory.getCurrentSession().merge(trainee);
+    }
 
-    public Optional<Trainee> findById(Long id) { return Optional.ofNullable(traineeStorage.get(id)); }
+    public Optional<Trainee> findById(Long id) {
+        return Optional.ofNullable(sessionFactory.getCurrentSession().get(Trainee.class, id));
+    }
 
-    public List<Trainee> findAll() { return new ArrayList<>(traineeStorage.values()); }
+    public Optional<Trainee> findByUsername(String username) {
+        return sessionFactory.getCurrentSession()
+                .createQuery("""
+                        select t from Trainee t
+                        join fetch t.user u
+                        where u.username = :username
+                        """, Trainee.class)
+                .setParameter("username", username)
+                .uniqueResultOptional();
+    }
+
+    public List<Trainee> findAll() {
+        return sessionFactory.getCurrentSession()
+                .createQuery("select t from Trainee t join fetch t.user", Trainee.class)
+                .getResultList();
+    }
 
     public boolean existsByUsername(String username) {
-        return traineeStorage.values().stream()
-                .anyMatch(trainee -> username.equals(trainee.getUsername()));
+        return sessionFactory.getCurrentSession()
+                .createQuery("""
+                        select count(t.id) from Trainee t
+                        where t.user.username = :username
+                        """, Long.class)
+                .setParameter("username", username)
+                .uniqueResult() > 0;
     }
 
-    public void deleteById(Long id) { traineeStorage.remove(id); }
+    public boolean passwordMatches(String username, String password) {
+        return sessionFactory.getCurrentSession()
+                .createQuery("""
+                        select count(t.id) from Trainee t
+                        where t.user.username = :username and t.user.password = :password
+                        """, Long.class)
+                .setParameter("username", username)
+                .setParameter("password", password)
+                .uniqueResult() > 0;
+    }
+
+    @Transactional
+    public void delete(Trainee trainee) {
+        sessionFactory.getCurrentSession().remove(trainee);
+    }
+
+    public List<Trainer> findUnassignedTrainers(String traineeUsername) {
+        return sessionFactory.getCurrentSession()
+                .createQuery("""
+                        select tr from Trainer tr
+                        join fetch tr.user
+                        where tr.id not in (
+                            select assigned.id from Trainee te
+                            join te.trainers assigned
+                            where te.user.username = :username
+                        )
+                        order by tr.user.firstName, tr.user.lastName
+                        """, Trainer.class)
+                .setParameter("username", traineeUsername)
+                .getResultList();
+    }
 }

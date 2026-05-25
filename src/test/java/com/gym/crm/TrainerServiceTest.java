@@ -27,7 +27,7 @@ class TrainerServiceTest {
         Trainer tr = new Trainer();
         tr.setFirstName("Mike");
         tr.setLastName("Tyson");
-        tr.setSpecialization("Box");
+        tr.setSpecialization("CARDIO");
         tr.setActive(true);
 
         Trainer created = trainerService.create(tr);
@@ -45,7 +45,7 @@ class TrainerServiceTest {
         Trainer tr = new Trainer();
         tr.setFirstName("Mike");
         tr.setLastName("Brown");
-        tr.setSpecialization("Strength");
+        tr.setSpecialization("STRENGTH");
         tr.setActive(true);
 
         Trainer created = trainerService.create(tr);
@@ -59,7 +59,7 @@ class TrainerServiceTest {
         Trainer tr = new Trainer();
         tr.setFirstName("Anna");
         tr.setLastName("Lee");
-        tr.setSpecialization("Yoga");
+        tr.setSpecialization("YOGA");
         tr.setActive(true);
 
         Trainer created = trainerService.create(tr);
@@ -67,14 +67,14 @@ class TrainerServiceTest {
         Trainer upd = new Trainer();
         upd.setFirstName("Ann");
         upd.setLastName("Lee");
-        upd.setSpecialization("Pilates");
+        upd.setSpecialization("STRENGTH");
         upd.setActive(false);
 
         Optional<Trainer> updated = trainerService.update(created.getId(), upd);
 
         assertTrue(updated.isPresent());
         assertEquals("Ann", updated.get().getFirstName());
-        assertEquals("Pilates", updated.get().getSpecialization());
+        assertEquals("STRENGTH", updated.get().getSpecialization());
         assertFalse(updated.get().isActive());
         ctx.close();
     }
@@ -84,5 +84,111 @@ class TrainerServiceTest {
         Optional<Trainer> opt = trainerService.select(999999L);
         assertTrue(opt.isEmpty());
         ctx.close();
+    }
+
+    @Test
+    void create_MissingRequiredField_ShouldThrowException() {
+        Trainer trainer = new Trainer();
+        trainer.setFirstName("Mike");
+        trainer.setSpecialization("CARDIO");
+        trainer.setActive(true);
+
+        assertThrows(IllegalArgumentException.class, () -> trainerService.create(trainer));
+        ctx.close();
+    }
+
+    @Test
+    void create_UnknownTrainingType_ShouldThrowException() {
+        Trainer trainer = new Trainer();
+        trainer.setFirstName("Mike");
+        trainer.setLastName("Unknown");
+        trainer.setSpecialization("BOXING");
+        trainer.setActive(true);
+
+        assertThrows(IllegalArgumentException.class, () -> trainerService.create(trainer));
+        ctx.close();
+    }
+
+    @Test
+    void update_NotFound_ShouldReturnEmpty() {
+        Trainer update = new Trainer();
+        update.setFirstName("Ann");
+        update.setLastName("Lee");
+        update.setSpecialization("CARDIO");
+        update.setActive(true);
+
+        Optional<Trainer> updated = trainerService.update(999999L, update);
+
+        assertTrue(updated.isEmpty());
+        ctx.close();
+    }
+
+    @Test
+    void selectByUsername_WithInvalidPassword_ShouldThrowSecurityException() {
+        Trainer created = trainerService.create(trainer("Ivy", "Moore", "YOGA"));
+
+        assertThrows(SecurityException.class,
+                () -> trainerService.selectByUsername(created.getUsername(), "wrong"));
+        ctx.close();
+    }
+
+    @Test
+    void update_ByUsernameAndPassword_ShouldModifyFields() {
+        Trainer created = trainerService.create(trainer("Gary", "Holt", "CARDIO"));
+        Trainer update = trainer("Garry", "Holt", "STRENGTH");
+        update.setActive(false);
+
+        Optional<Trainer> updated = trainerService.update(created.getUsername(), created.getPassword(), update);
+
+        assertTrue(updated.isPresent());
+        assertEquals("Garry", updated.get().getFirstName());
+        assertEquals("STRENGTH", updated.get().getSpecialization());
+        assertFalse(updated.get().isActive());
+        ctx.close();
+    }
+
+    @Test
+    void changePassword_ShouldRejectInvalidOldPassword() {
+        Trainer created = trainerService.create(trainer("Helen", "Park", "FITNESS"));
+
+        assertThrows(SecurityException.class,
+                () -> trainerService.changePassword(created.getUsername(), "bad", "new-password"));
+        ctx.close();
+    }
+
+    @Test
+    void changePassword_ShouldUpdateCredentials() {
+        Trainer created = trainerService.create(trainer("Evan", "Cole", "CROSSFIT"));
+
+        trainerService.changePassword(created.getUsername(), created.getPassword(), "new-password");
+
+        assertFalse(trainerService.authenticate(created.getUsername(), created.getPassword()));
+        assertTrue(trainerService.authenticate(created.getUsername(), "new-password"));
+        ctx.close();
+    }
+
+    @Test
+    void activateAndDeactivate_ShouldRejectSameState() {
+        Trainer created = trainerService.create(trainer("Grace", "Hill", "YOGA"));
+
+        assertThrows(IllegalStateException.class,
+                () -> trainerService.activate(created.getUsername(), created.getPassword()));
+
+        trainerService.deactivate(created.getUsername(), created.getPassword());
+        assertThrows(IllegalStateException.class,
+                () -> trainerService.deactivate(created.getUsername(), created.getPassword()));
+
+        trainerService.activate(created.getUsername(), created.getPassword());
+        assertTrue(trainerService.selectByUsername(created.getUsername()).orElseThrow().isActive());
+        ctx.close();
+    }
+
+    private Trainer trainer(String firstName, String lastName, String specialization) {
+        Trainer trainer = new Trainer();
+        trainer.setFirstName(firstName);
+        trainer.setLastName(lastName);
+        trainer.setSpecialization(specialization);
+        trainer.setActive(true);
+        return trainer;
     }
 }

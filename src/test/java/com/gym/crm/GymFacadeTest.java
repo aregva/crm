@@ -81,7 +81,7 @@ class GymFacadeTest {
         Trainer tr = new Trainer();
         tr.setFirstName("Kate");
         tr.setLastName("Brown");
-        tr.setSpecialization("Yoga");
+        tr.setSpecialization("YOGA");
         tr.setActive(true);
 
         Trainer created = facade.createTrainer(tr);
@@ -101,7 +101,7 @@ class GymFacadeTest {
         Trainer tr = new Trainer();
         tr.setFirstName("Mark");
         tr.setLastName("Lee");
-        tr.setSpecialization("Cardio");
+        tr.setSpecialization("CARDIO");
         tr.setActive(true);
 
         Trainer created = facade.createTrainer(tr);
@@ -109,14 +109,14 @@ class GymFacadeTest {
         Trainer upd = new Trainer();
         upd.setFirstName("Marcus");
         upd.setLastName("Lee");
-        upd.setSpecialization("Strength");
+        upd.setSpecialization("STRENGTH");
         upd.setActive(false);
 
         Optional<Trainer> updated = facade.updateTrainer(created.getId(), upd);
 
         assertTrue(updated.isPresent());
         assertEquals("Marcus", updated.get().getFirstName());
-        assertEquals("Strength", updated.get().getSpecialization());
+        assertEquals("STRENGTH", updated.get().getSpecialization());
         assertFalse(updated.get().isActive());
 
         ctx.close();

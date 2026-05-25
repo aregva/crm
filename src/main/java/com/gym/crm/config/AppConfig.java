@@ -5,10 +5,12 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
 @ComponentScan("com.gym.crm")
 @PropertySource("classpath:application.properties")
+@EnableTransactionManagement
 public class AppConfig {
 
     @Bean

@@ -1,6 +1,19 @@
-# Gym CRM Spring Core
+# Gym CRM Hibernate
 
-In-memory CRM application built with Spring Core. The project keeps storage in Spring-managed maps and exposes basic services for trainees, trainers, and trainings.
+CRM application built with Spring Core, Hibernate, and an embedded H2 database. The domain follows the provided relational model: `users`, `trainee`, `trainer`, `training`, `training_type`, and the trainee-trainer many-to-many join table.
+
+## Persistence
+
+Hibernate is configured in `HibernateConfig` with Spring transaction management enabled in `AppConfig`.
+
+The default database is embedded H2:
+
+```properties
+db.url=jdbc:h2:mem:gymcrm;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+hibernate.hbm2ddl.auto=create-drop
+```
+
+`TrainingType` is stored as a reference table and seeded with constant values: `FITNESS`, `YOGA`, `CARDIO`, `CROSSFIT`, and `STRENGTH`.
 
 ## Storage Initialization
 
@@ -33,6 +46,22 @@ The DAOs expose a single existence check:
 
 This keeps the storage lookup hidden behind the DAO layer and avoids pulling all data for username validation.
 
+## Supported Operations
+
+- Create trainer and trainee profiles with generated username/password.
+- Authenticate trainee and trainer credentials.
+- Select trainer and trainee profiles by username.
+- Change trainee and trainer passwords.
+- Update trainer and trainee profiles with required field validation.
+- Activate/deactivate profiles as non-idempotent actions.
+- Hard delete trainee profiles with cascade deletion of trainings.
+- Add trainings linked by FK to trainee, trainer, and training type.
+- Get trainee and trainer training lists by criteria.
+- Get trainers not assigned to a trainee.
+- Replace a trainee's assigned trainers list.
+
+All mutating service operations are transactional where database state changes are involved. Authenticated operation variants are exposed through `GymFacade`; legacy ID-based methods remain for compatibility with earlier module tests.
+
 ## Tests and JaCoCo Coverage
 
 The project uses **JUnit 5**, **Spring Test**, and **JaCoCo**.
@@ -43,6 +72,7 @@ The project uses **JUnit 5**, **Spring Test**, and **JaCoCo**.
 - **`TrainingServiceTest`**: Creation and selection logic.
 - **`StorageInitializationTest`**: Verifies data loading from split trainee and trainer resource files.
 - **`GymFacadeTest`**: End-to-end flow validation.
+- **`HibernateProfileFlowTest`**: Authenticated Hibernate profile, password, activation, training criteria, and trainer assignment flows.
 
 ### FIRST Principles
 - **Fast**: In-memory storage.

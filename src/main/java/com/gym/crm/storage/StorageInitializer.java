@@ -1,48 +1,68 @@
 package com.gym.crm.storage;
 
+import com.gym.crm.dao.TraineeDao;
+import com.gym.crm.dao.TrainerDao;
+import com.gym.crm.dao.TrainingTypeDao;
 import com.gym.crm.domain.Trainee;
 import com.gym.crm.domain.Trainer;
+import com.gym.crm.domain.TrainingType;
+import com.gym.crm.util.PasswordGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Component
 public class StorageInitializer implements InitializingBean {
     private static final Logger log = LoggerFactory.getLogger(StorageInitializer.class);
 
-    private final Map<Long, Trainee> traineeStorage;
-    private final Map<Long, Trainer> trainerStorage;
+    private final TraineeDao traineeDao;
+    private final TrainerDao trainerDao;
+    private final TrainingTypeDao trainingTypeDao;
     private final TraineeDataParser traineeDataParser;
     private final TrainerDataParser trainerDataParser;
+    private final PasswordGenerator passwordGenerator;
     private final Resource traineesResource;
     private final Resource trainersResource;
+    private final TransactionTemplate transactionTemplate;
 
-    public StorageInitializer(@Qualifier("traineeStorage") Map<Long, Trainee> traineeStorage,
-                              @Qualifier("trainerStorage") Map<Long, Trainer> trainerStorage,
+    public StorageInitializer(TraineeDao traineeDao,
+                              TrainerDao trainerDao,
+                              TrainingTypeDao trainingTypeDao,
                               TraineeDataParser traineeDataParser,
                               TrainerDataParser trainerDataParser,
+                              PasswordGenerator passwordGenerator,
                               @Value("${storage.init.trainees-file}") Resource traineesResource,
-                              @Value("${storage.init.trainers-file}") Resource trainersResource) {
-        this.traineeStorage = traineeStorage;
-        this.trainerStorage = trainerStorage;
+                              @Value("${storage.init.trainers-file}") Resource trainersResource,
+                              PlatformTransactionManager transactionManager) {
+        this.traineeDao = traineeDao;
+        this.trainerDao = trainerDao;
+        this.trainingTypeDao = trainingTypeDao;
         this.traineeDataParser = traineeDataParser;
         this.trainerDataParser = trainerDataParser;
+        this.passwordGenerator = passwordGenerator;
         this.traineesResource = traineesResource;
         this.trainersResource = trainersResource;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Override
     public void afterPropertiesSet() {
+        transactionTemplate.executeWithoutResult(status -> initialize());
+    }
+
+    private void initialize() {
         log.info("Starting storage initialization from resources: {}, {}", traineesResource, trainersResource);
+
+        seedTrainingTypes();
 
         List<Trainee> trainees = traineeDataParser.parse(traineesResource);
         List<Trainer> trainers = trainerDataParser.parse(trainersResource);
@@ -50,11 +70,41 @@ public class StorageInitializer implements InitializingBean {
         validateUniqueTraineeIds(trainees);
         validateUniqueTrainerIds(trainers);
 
-        trainees.forEach(trainee -> traineeStorage.put(trainee.getId(), trainee));
-        trainers.forEach(trainer -> trainerStorage.put(trainer.getId(), trainer));
+        trainers.forEach(this::resolveSpecialization);
+        trainees.forEach(this::ensurePassword);
+        trainers.forEach(this::ensurePassword);
+        trainees.forEach(traineeDao::save);
+        trainers.forEach(trainerDao::save);
 
         log.info("Storage initialization completed. traineesLoaded={}, trainersLoaded={}",
                 trainees.size(), trainers.size());
+    }
+
+    private void seedTrainingTypes() {
+        trainingTypeDao.save(TrainingType.FITNESS);
+        trainingTypeDao.save(TrainingType.YOGA);
+        trainingTypeDao.save(TrainingType.CARDIO);
+        trainingTypeDao.save(TrainingType.CROSSFIT);
+        trainingTypeDao.save(TrainingType.STRENGTH);
+    }
+
+    private void resolveSpecialization(Trainer trainer) {
+        String specialization = trainer.getSpecialization();
+        TrainingType trainingType = trainingTypeDao.findByName(specialization)
+                .orElseThrow(() -> new IllegalStateException("Unknown trainer specialization: " + specialization));
+        trainer.setSpecializationType(trainingType);
+    }
+
+    private void ensurePassword(Trainee trainee) {
+        if (trainee.getPassword() == null || trainee.getPassword().isBlank()) {
+            trainee.setPassword(passwordGenerator.generate(10));
+        }
+    }
+
+    private void ensurePassword(Trainer trainer) {
+        if (trainer.getPassword() == null || trainer.getPassword().isBlank()) {
+            trainer.setPassword(passwordGenerator.generate(10));
+        }
     }
 
     private void validateUniqueUsernames(List<Trainee> trainees, List<Trainer> trainers) {
