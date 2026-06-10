@@ -42,10 +42,21 @@ public class TrainerService {
         trainer.setSpecializationType(resolveTrainingType(trainer.getSpecialization()));
 
         String base = usernameGenerator.generateBase(trainer.getFirstName(), trainer.getLastName());
-        trainer.setUsername(usernameGenerator.makeUnique(base, this::usernameExists));
-        trainer.setPassword(passwordGenerator.generate(10));
-        Trainer saved = trainerDao.save(trainer);
+        String uniqueUsername = usernameGenerator.makeUnique(base, this::usernameExists);
+        String generatedPassword = passwordGenerator.generate(10);
 
+        if (trainer.getUser() == null) {
+            trainer.setUser(new com.gym.crm.domain.User());
+        }
+        trainer.getUser().setFirstName(trainer.getFirstName());
+        trainer.getUser().setLastName(trainer.getLastName());
+        trainer.getUser().setUsername(uniqueUsername);
+        trainer.getUser().setPassword(generatedPassword);
+
+        trainer.setUsername(uniqueUsername);
+        trainer.setPassword(generatedPassword);
+
+        Trainer saved = trainerDao.save(trainer);
         log.info("Created trainer id={}, username={}", saved.getId(), saved.getUsername());
         return saved;
     }
@@ -112,6 +123,12 @@ public class TrainerService {
         trainer.setLastName(update.getLastName());
         trainer.setSpecializationType(resolveTrainingType(update.getSpecialization()));
         trainer.setActive(update.isActive());
+
+        if (trainer.getUser() != null) {
+            trainer.getUser().setFirstName(update.getFirstName());
+            trainer.getUser().setLastName(update.getLastName());
+            trainer.getUser().setActive(update.isActive());
+        }
 
         log.info("Updated trainer id={}", trainer.getId());
         return trainer;

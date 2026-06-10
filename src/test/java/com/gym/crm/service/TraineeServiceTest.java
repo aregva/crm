@@ -1,10 +1,8 @@
-package com.gym.crm;
+package com.gym.crm.service;
 
 import com.gym.crm.config.AppConfig;
 import com.gym.crm.domain.Trainee;
 import com.gym.crm.domain.Trainer;
-import com.gym.crm.service.TraineeService;
-import com.gym.crm.service.TrainerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;

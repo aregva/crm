@@ -56,6 +56,36 @@ public class TrainingService {
         return create(training);
     }
 
+    @Transactional
+    public Training addTraining(String traineeUsername,
+                                String traineePassword,
+                                String trainerUsername,
+                                String trainingName,
+                                LocalDate trainingDate,
+                                int trainingDurationMinutes) {
+        ValidationUtils.requireText(traineeUsername, "traineeUsername");
+        ValidationUtils.requireText(trainerUsername, "trainerUsername");
+        ValidationUtils.requireText(trainingName, "trainingName");
+
+        if (!traineeDao.passwordMatches(traineeUsername, traineePassword)) {
+            throw new SecurityException("Invalid trainee credentials");
+        }
+
+        Trainee trainee = traineeDao.findByUsername(traineeUsername).orElseThrow();
+        Trainer trainer = trainerDao.findByUsername(trainerUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Trainer not found: " + trainerUsername));
+
+        Training training = new Training();
+        training.setTrainee(trainee);
+        training.setTrainer(trainer);
+        training.setTrainingName(trainingName);
+        training.setTrainingType(trainer.getSpecializationType());
+        training.setTrainingDate(trainingDate);
+        training.setTrainingDurationMinutes(trainingDurationMinutes);
+
+        return create(training);
+    }
+
     @Transactional(readOnly = true)
     public Optional<Training> select(Long id) {
         return trainingDao.findById(id);

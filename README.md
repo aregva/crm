@@ -1,93 +1,465 @@
+Here is the complete `README.md` file contents matching the specification of your Gym CRM application. You can copy and save this entire block directly as a Markdown file:
+
+```markdown
 # Gym CRM Hibernate
 
-CRM application built with Spring Core, Hibernate, and an embedded H2 database. The domain follows the provided relational model: `users`, `trainee`, `trainer`, `training`, `training_type`, and the trainee-trainer many-to-many join table.
+A comprehensive CRM backend system for a Gym management ecosystem, built using Java 17, Spring Core, Spring MVC (REST views), Hibernate ORM 6, and an embedded H2 database. 
 
-## Persistence
+The architecture strictly separates responsibilities into four layers:
+$$\text{Controller} \longrightarrow \text{Facade} \longrightarrow \text{Service} \longrightarrow \text{DAO (Hibernate Mapping)}$$
 
-Hibernate is configured in `HibernateConfig` with Spring transaction management enabled in `AppConfig`.
+---
 
-The default database is embedded H2:
+## 🏗️ Relational Domain Model
 
-```properties
-db.url=jdbc:h2:mem:gymcrm;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
-hibernate.hbm2ddl.auto=create-drop
+The data access layer manages a relational schema utilizing an atomic structure where core profile metadata is decoupled from specialized roles:
+
+* **`users`**: Houses shared authentication and credential metadata (`id`, `firstName`, `lastName`, `username`, `password`, `isActive`).
+* **`trainee`**: Extends a `users` reference with trainee metrics (`dateOfBirth`, `address`).
+* **`trainer`**: Extends a `users` reference with technical specializations (`specializationType`).
+* **`training`**: Connective transactional ledger linking a Trainee, a Trainer, and a specific `training_type`.
+* **`training_type`**: Immutable catalog tracking available gym training genres (e.g., YOGA, FITNESS).
+* **`trainee_trainer`**: Many-to-many join relationship structure linking trainees to their circle of ongoing mentors.
+
+---
+
+## 🔒 Business & Authentication Rules
+
+1. **API Scope**: All REST routes are contained strictly under the `/api/**` context path.
+2. **Authentication requirement**: Open endpoints are restricted entirely to Registration routes. All other execution calls require **HTTP Basic Authentication** verified through the application layer via `RestAuthenticationService`.
+3. **Role Mutability Constraint**: An identity is exclusive. An initialized user record cannot simultaneously act as both a Trainer and a Trainee.
+4. **Username Immutability**: Usernames are auto-generated safely during registration and cannot be changed during profile updates.
+5. **Ledger Constraint**: Trainings are append-only. Once logged, training session records can neither be modified nor deleted via REST layers.
+6. **Hard Cascade Removal**: Removing a trainee triggers an atomic hard-delete cascade that clears down all dependent trainer ledger bindings and training sessions.
+
+---
+
+## 🌐 REST API Endpoints
+
+### 1. Trainee Registration
+* **Route**: `POST /api/trainees/register`
+* **Access**: Public
+
+#### Request Body
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "dateOfBirth": "2000-01-01",
+  "address": "Yerevan"
+}
+
 ```
 
-`TrainingType` is stored as a reference table and seeded with constant values: `FITNESS`, `YOGA`, `CARDIO`, `CROSSFIT`, and `STRENGTH`.
+#### Response Body (`200 OK`)
 
-## Storage Initialization
+```json
+{
+  "username": "john.smith",
+  "password": "generatedPassword"
+}
 
-Initial trainee and trainer data is loaded during Spring context initialization by `StorageInitializer`.
-
-Seed data is split by domain entity:
-
-| Entity | Resource | Format |
-| :--- | :--- | :--- |
-| Trainees | `src/main/resources/trainees-data.txt` | `id;firstName;lastName;username;address;active` |
-| Trainers | `src/main/resources/trainers-data.txt` | `id;firstName;lastName;username;specialization;active` |
-
-The resource locations are configured in `src/main/resources/application.properties`:
-
-```properties
-storage.init.trainees-file=classpath:trainees-data.txt
-storage.init.trainers-file=classpath:trainers-data.txt
 ```
 
-IDs and usernames are part of the seed data. The initializer validates duplicate usernames across trainees and trainers, and duplicate IDs within each entity file.
+---
 
-## Username Generation
+### 2. Trainer Registration
 
-`UsernameGenerator` creates a base username from first and last name, then checks uniqueness through DAO methods instead of requiring callers to load all users into memory.
+* **Route**: `POST /api/trainers/register`
+* **Access**: Public
 
-The DAOs expose a single existence check:
+#### Request Body
 
-- `TraineeDao.existsByUsername(String username)`
-- `TrainerDao.existsByUsername(String username)`
+```json
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "specialization": "YOGA"
+}
 
-This keeps the storage lookup hidden behind the DAO layer and avoids pulling all data for username validation.
+```
 
-## Supported Operations
+#### Response Body (`200 OK`)
 
-- Create trainer and trainee profiles with generated username/password.
-- Authenticate trainee and trainer credentials.
-- Select trainer and trainee profiles by username.
-- Change trainee and trainer passwords.
-- Update trainer and trainee profiles with required field validation.
-- Activate/deactivate profiles as non-idempotent actions.
-- Hard delete trainee profiles with cascade deletion of trainings.
-- Add trainings linked by FK to trainee, trainer, and training type.
-- Get trainee and trainer training lists by criteria.
-- Get trainers not assigned to a trainee.
-- Replace a trainee's assigned trainers list.
+```json
+{
+  "username": "jane.doe",
+  "password": "generatedPassword"
+}
 
-All mutating service operations are transactional where database state changes are involved. Authenticated operation variants are exposed through `GymFacade`; legacy ID-based methods remain for compatibility with earlier module tests.
+```
 
-## Tests and JaCoCo Coverage
+---
 
-The project uses **JUnit 5**, **Spring Test**, and **JaCoCo**.
+### 3. Login
 
-### Implemented Tests
-- **`TraineeServiceTest`**: CRUD operations, username/password generation, duplicate handling, authenticated updates, password validation, activation/deactivation, hard delete by username, and trainer assignment paths.
-- **`TrainerServiceTest`**: CRUD operations, duplicate handling with init data, required field validation, training type validation, authenticated updates, password changes, and activation/deactivation paths.
-- **`TrainingServiceTest`**: Creation and selection logic, required field validation, invalid FK/reference handling, authenticated access failures, and criteria-based training list queries.
-- **`StorageInitializationTest`**: Verifies data loading from split trainee and trainer resource files.
-- **`GymFacadeTest`**: End-to-end flow validation.
-- **`HibernateProfileFlowTest`**: Authenticated Hibernate profile, password, activation, training criteria, and trainer assignment flows.
+* **Route**: `GET /api/auth/login`
+* **Access**: Basic Auth Authenticated
 
-### FIRST Principles
-- **Fast**: Embedded H2 database with Hibernate `create-drop` schema generation.
-- **Independent**: Isolated context.
-- **Repeatable**: Deterministic assertions.
-- **Self-validating**: Automatic verification.
-- **Timely**: Comprehensive coverage.
+#### Response
 
-### Execution Commands
-| Task | Command |
-| :--- | :--- |
-| **Run Tests** | `./mvnw test` |
-| **Generate Report** | `./mvnw jacoco:report` |
-| **Enforce Coverage (80%)** | `./mvnw jacoco:check` |
+* **`200 OK`** if Basic authentication credentials are valid.
+* **`401 Unauthorized`** if credentials fail validation.
 
-**Report Location**: `target/site/jacoco/index.html`
+---
 
-Java 17 must be available on `PATH`, or `JAVA_HOME` must point to a valid JDK, before running Maven commands.
+### 4. Change Password
+
+* **Route**: `PUT /api/auth/password`
+* **Access**: Basic Auth Authenticated
+
+#### Request Body
+
+```json
+{
+  "username": "john.smith",
+  "oldPassword": "old123",
+  "newPassword": "new123"
+}
+
+```
+
+#### Response Body (`200 OK`)
+
+---
+
+### 5. Get Trainee Profile
+
+* **Route**: `GET /api/trainees/{username}`
+* **Access**: Basic Auth Authenticated
+
+#### Response Body (`200 OK`)
+
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "dateOfBirth": "2000-01-01",
+  "address": "Yerevan",
+  "active": true,
+  "trainers": [
+    {
+      "username": "jane.doe",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "specialization": "YOGA"
+    }
+  ]
+}
+
+```
+
+---
+
+### 6. Update Trainee Profile
+
+* **Route**: `PUT /api/trainees/{username}`
+* **Access**: Basic Auth Authenticated
+
+#### Request Body
+
+```json
+{
+  "firstName": "John",
+  "lastName": "Smith",
+  "dateOfBirth": "2000-01-01",
+  "address": "Yerevan",
+  "active": true
+}
+
+```
+
+#### Response Body (`200 OK`)
+
+```json
+{
+  "username": "john.smith",
+  "firstName": "John",
+  "lastName": "Smith",
+  "dateOfBirth": "2000-01-01",
+  "address": "Yerevan",
+  "active": true,
+  "trainers": []
+}
+
+```
+
+---
+
+### 7. Delete Trainee Profile
+
+* **Route**: `DELETE /api/trainees/{username}`
+* **Access**: Basic Auth Authenticated
+
+#### Response Status (`200 OK`)
+
+---
+
+### 8. Get Trainer Profile
+
+* **Route**: `GET /api/trainers/{username}`
+* **Access**: Basic Auth Authenticated
+
+#### Response Body (`200 OK`)
+
+```json
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "specialization": "YOGA",
+  "active": true,
+  "trainees": []
+}
+
+```
+
+---
+
+### 9. Update Trainer Profile
+
+* **Route**: `PUT /api/trainers/{username}`
+* **Access**: Basic Auth Authenticated
+
+#### Request Body
+
+```json
+{
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "active": true
+}
+
+```
+
+#### Response Body (`200 OK`)
+
+```json
+{
+  "username": "jane.doe",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "specialization": "YOGA",
+  "active": true,
+  "trainees": []
+}
+
+```
+
+---
+
+### 10. Get Unassigned Active Trainers
+
+* **Route**: `GET /api/trainees/{username}/available-trainers`
+* **Access**: Basic Auth Authenticated
+
+#### Response Body (`200 OK`)
+
+```json
+[
+  {
+    "username": "jane.doe",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "specialization": "YOGA"
+  }
+]
+
+```
+
+---
+
+### 11. Update Trainee Trainer List
+
+* **Route**: `PUT /api/trainees/{username}/trainers`
+* **Access**: Basic Auth Authenticated
+
+#### Request Body
+
+```json
+{
+  "trainers": ["jane.doe"]
+}
+
+```
+
+#### Response Body (`200 OK`)
+
+```json
+{
+  "trainers": [
+    {
+      "username": "jane.doe",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "specialization": "YOGA"
+    }
+  ]
+}
+
+```
+
+---
+
+### 12. Get Trainee Trainings List
+
+* **Route**: `GET /api/trainings/trainee/{username}`
+* **Access**: Basic Auth Authenticated
+* **Query Parameters (Optional)**:
+* `fromDate` (ISO format `YYYY-MM-DD`)
+* `toDate` (ISO format `YYYY-MM-DD`)
+* `trainerName` (String filter)
+* `trainingType` (String matching code)
+
+
+
+#### Response Body (`200 OK`)
+
+```json
+[
+  {
+    "trainingName": "Gym",
+    "trainingDate": "2026-01-01",
+    "trainingType": "FITNESS",
+    "trainingDuration": 60,
+    "trainerName": "Jane Doe"
+  }
+]
+
+```
+
+---
+
+### 13. Get Trainer Trainings List
+
+* **Route**: `GET /api/trainings/trainer/{username}`
+* **Access**: Basic Auth Authenticated
+* **Query Parameters (Optional)**:
+* `fromDate`
+* `toDate`
+* `traineeName`
+
+
+
+#### Response Body (`200 OK`)
+
+```json
+[
+  {
+    "trainingName": "Gym",
+    "trainingDate": "2026-01-01",
+    "trainingType": "FITNESS",
+    "trainingDuration": 60,
+    "traineeName": "John Smith"
+  }
+]
+
+```
+
+---
+
+### 14. Add Training
+
+* **Route**: `POST /api/trainings`
+* **Access**: Basic Auth Authenticated
+
+#### Request Body
+
+```json
+{
+  "traineeUsername": "john.smith",
+  "trainerUsername": "jane.doe",
+  "trainingName": "Gym",
+  "trainingDate": "2026-01-01",
+  "trainingDuration": 60
+}
+
+```
+
+#### Response Status (`200 OK`)
+
+---
+
+### 15. Activate / Deactivate Trainee
+
+* **Route**: `PATCH /api/trainees/{username}/status`
+* **Access**: Basic Auth Authenticated
+
+#### Request Body
+
+```json
+{
+  "active": true
+}
+
+```
+
+#### Response
+
+* **`200 OK`**: Status altered successfully.
+* **`409 Conflict`**: State modification request matches existing db status value (Non-idempotent tracking rule validation).
+
+---
+
+### 16. Activate / Deactivate Trainer
+
+* **Route**: `PATCH /api/trainers/{username}/status`
+* **Access**: Basic Auth Authenticated
+
+#### Request Body
+
+```json
+{
+  "active": false
+}
+
+```
+
+#### Response
+
+* **`200 OK`**: Status modified.
+* **`409 Conflict`**: If the target trainer entity is already in the matching state.
+
+---
+
+### 17. Get Training Types
+
+* **Route**: `GET /api/training-types`
+* **Access**: Basic Auth Authenticated
+
+#### Response Body (`200 OK`)
+
+```json
+[
+  {
+    "trainingType": "YOGA",
+    "trainingTypeId": 1
+  },
+  {
+    "trainingType": "FITNESS",
+    "trainingTypeId": 2
+  }
+]
+
+```
+
+---
+
+## 🛠️ Tech Stack Matrix
+
+* **Core Runtime Language**: Java 17
+* **Inversion of Control & REST Routing Layer**: Spring Framework Core / Spring MVC (6.x)
+* **Data Mapping & Transactions Engine**: Hibernate ORM Core (6.5.2.Final) / Spring ORM
+* **Local In-Memory Persistence Layer**: H2 Database (2.2.224)
+* **Data Verification Engine**: Hibernate Validator (8.0.1.Final) & Jakarta Validation API
+* **Serialization & Marshalling Suite**: Jackson Databind & JavaTimeModules (2.17.2)
+* **Performance Diagnostics & Tracing**: Micrometer Observations API
+* **Engine Test Suites**: JUnit Jupiter Engine 5.10 & Mockito Framework
+* **REST Execution Testing**: Spring-Test Suite using custom standalone `MockMvc` contexts
+
+---
+
+## 🧪 System Testing Strategy
+
+1. **Core Domain Unit Tests**: Covers business rule validation algorithms across isolated Service-layer and architectural Facade components with mocked data providers.
+2. **REST Integration Testing**: Managed strictly via MockMvc configurations validating status contracts, authentication context parsing, response payloads, and entity payload validation hooks.
+3. **Transactional Database Verifications**: Leveraging automatic text storage initialization script loaders (`trainees-data.txt`, `trainers-data.txt`) targeted at clean transactional contexts within an isolated H2 environment to ensure side-effect free, repeatable test executions.

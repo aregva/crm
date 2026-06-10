@@ -37,13 +37,30 @@ public class TraineeService {
 
     @Transactional
     public Trainee create(Trainee trainee) {
-        validateRequiredProfileFields(trainee);
+        // Ensure validations are run
+        ValidationUtils.requireNonNull(trainee, "trainee");
+        ValidationUtils.requireText(trainee.getFirstName(), "firstName");
+        ValidationUtils.requireText(trainee.getLastName(), "lastName");
 
         String base = usernameGenerator.generateBase(trainee.getFirstName(), trainee.getLastName());
-        trainee.setUsername(usernameGenerator.makeUnique(base, this::usernameExists));
-        trainee.setPassword(passwordGenerator.generate(10));
-        Trainee saved = traineeDao.save(trainee);
+        String uniqueUsername = usernameGenerator.makeUnique(base, this::usernameExists);
+        String generatedPassword = passwordGenerator.generate(10);
 
+        // FIX: Populate top-level fields
+        trainee.setUsername(uniqueUsername);
+        trainee.setPassword(generatedPassword);
+
+        // FIX: Synchronize underlying Hibernate User relational mapping object
+        if (trainee.getUser() == null) {
+            trainee.setUser(new com.gym.crm.domain.User());
+        }
+        trainee.getUser().setFirstName(trainee.getFirstName());
+        trainee.getUser().setLastName(trainee.getLastName());
+        trainee.getUser().setUsername(uniqueUsername);
+        trainee.getUser().setPassword(generatedPassword);
+        trainee.getUser().setActive(true);
+
+        Trainee saved = traineeDao.save(trainee);
         log.info("Created trainee id={}, username={}", saved.getId(), saved.getUsername());
         return saved;
     }
@@ -142,13 +159,17 @@ public class TraineeService {
     }
 
     private Trainee applyUpdate(Trainee trainee, Trainee update) {
-        validateRequiredProfileFields(update);
-
         trainee.setFirstName(update.getFirstName());
         trainee.setLastName(update.getLastName());
-        trainee.setAddress(update.getAddress());
         trainee.setDateOfBirth(update.getDateOfBirth());
+        trainee.setAddress(update.getAddress());
         trainee.setActive(update.isActive());
+
+        if (trainee.getUser() != null) {
+            trainee.getUser().setFirstName(update.getFirstName());
+            trainee.getUser().setLastName(update.getLastName());
+            trainee.getUser().setActive(update.isActive());
+        }
 
         log.info("Updated trainee id={}", trainee.getId());
         return trainee;

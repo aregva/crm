@@ -1,0 +1,11 @@
+package com.gym.crm.rest.dto;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record ActiveStatusRequest(
+        @NotBlank String username,
+        @JsonProperty("isActive") @NotNull Boolean isActive
+) {
+}

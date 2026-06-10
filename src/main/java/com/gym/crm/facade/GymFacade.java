@@ -3,9 +3,11 @@ package com.gym.crm.facade;
 import com.gym.crm.domain.Trainee;
 import com.gym.crm.domain.Trainer;
 import com.gym.crm.domain.Training;
+import com.gym.crm.domain.TrainingType;
 import com.gym.crm.service.TraineeService;
 import com.gym.crm.service.TrainerService;
 import com.gym.crm.service.TrainingService;
+import com.gym.crm.service.TrainingTypeService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -17,11 +19,16 @@ public class GymFacade {
     private final TraineeService traineeService;
     private final TrainerService trainerService;
     private final TrainingService trainingService;
+    private final TrainingTypeService trainingTypeService;
 
-    public GymFacade(TraineeService traineeService, TrainerService trainerService, TrainingService trainingService) {
+    public GymFacade(TraineeService traineeService,
+                     TrainerService trainerService,
+                     TrainingService trainingService,
+                     TrainingTypeService trainingTypeService) {
         this.traineeService = traineeService;
         this.trainerService = trainerService;
         this.trainingService = trainingService;
+        this.trainingTypeService = trainingTypeService;
     }
 
     public Trainee createTrainee(Trainee trainee) { return traineeService.create(trainee); }
@@ -70,6 +77,20 @@ public class GymFacade {
     public Training addTraining(String traineeUsername, String traineePassword, Training training) {
         return trainingService.addTraining(traineeUsername, traineePassword, training);
     }
+    public Training addTraining(String traineeUsername,
+                                String traineePassword,
+                                String trainerUsername,
+                                String trainingName,
+                                LocalDate trainingDate,
+                                int trainingDurationMinutes) {
+        return trainingService.addTraining(
+                traineeUsername,
+                traineePassword,
+                trainerUsername,
+                trainingName,
+                trainingDate,
+                trainingDurationMinutes);
+    }
     public Optional<Training> getTraining(Long id) { return trainingService.select(id); }
     public List<Training> getTraineeTrainings(String traineeUsername,
                                               String password,
@@ -87,5 +108,9 @@ public class GymFacade {
                                               String traineeName) {
         return trainingService.getTrainerTrainings(
                 trainerUsername, password, fromDate, toDate, traineeName);
+    }
+
+    public List<TrainingType> getTrainingTypes() {
+        return trainingTypeService.findAll();
     }
 }
