@@ -54,7 +54,8 @@ class TraineeRestControllerTest extends BaseControllerTest {
                 .thenReturn(Optional.of(t));
 
         mockMvc.perform(get("/api/trainees/john"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("john"));
     }
 
     @Test
@@ -64,7 +65,7 @@ class TraineeRestControllerTest extends BaseControllerTest {
                 .thenReturn(new AuthenticatedUser("john", "pass", RestUserRole.TRAINEE));
 
         mockMvc.perform(delete("/api/trainees/john"))
-                .andExpect(status().isOk());
+                .andExpect(status().isNoContent());
 
         verify(facade).deleteTrainee("john", "pass");
     }

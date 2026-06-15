@@ -37,7 +37,8 @@ class TrainerRestControllerTest extends BaseControllerTest {
                                         "John", "Doe", "Yoga"
                                 )
                         )))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("john"));
     }
 
     @Test
@@ -53,7 +54,8 @@ class TrainerRestControllerTest extends BaseControllerTest {
                 .thenReturn(Optional.of(t));
 
         mockMvc.perform(get("/api/trainers/john"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("john"));
     }
 
     @Test
@@ -62,10 +64,10 @@ class TrainerRestControllerTest extends BaseControllerTest {
         when(auth.requireTrainer(any(), eq("john")))
                 .thenReturn(new AuthenticatedUser("john", "pass", RestUserRole.TRAINER));
 
-        mockMvc.perform(patch("/api/trainers/status")
+        mockMvc.perform(patch("/api/trainers/john/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                            {"username":"john","isActive":true}
+                            {"isActive":true}
                         """))
                 .andExpect(status().isOk());
 

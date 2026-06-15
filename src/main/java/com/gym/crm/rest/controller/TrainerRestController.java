@@ -57,16 +57,17 @@ public class TrainerRestController {
         return toTrainerProfileResponse(trainer);
     }
 
-    @PutMapping
+    @PutMapping("/{username}")
     public TrainerProfileResponse updateTrainerProfile(
+            @PathVariable String username,
             @Valid @RequestBody UpdateTrainerProfileRequest request,
             HttpServletRequest httpRequest) {
 
         AuthenticatedUser user =
-                authenticationService.requireTrainer(httpRequest, request.username());
+                authenticationService.requireTrainer(httpRequest, username);
 
         Trainer existing = facade.getTrainerByUsername(
-                request.username(),
+                username,
                 user.password()
         ).orElseThrow();
 
@@ -79,7 +80,7 @@ public class TrainerRestController {
         update.setActive(request.isActive());
 
         Trainer updated = facade.updateTrainer(
-                request.username(),
+                username,
                 user.password(),
                 update
         ).orElseThrow();
@@ -87,18 +88,19 @@ public class TrainerRestController {
         return toTrainerProfileResponse(updated);
     }
 
-    @PatchMapping("/status")
+    @PatchMapping("/{username}/status")
     public ResponseEntity<Void> changeTrainerActiveStatus(
+            @PathVariable String username,
             @Valid @RequestBody ActiveStatusRequest request,
             HttpServletRequest httpRequest) {
 
         AuthenticatedUser user =
-                authenticationService.requireTrainer(httpRequest, request.username());
+                authenticationService.requireTrainer(httpRequest, username);
 
         if (request.isActive()) {
-            facade.activateTrainer(request.username(), user.password());
+            facade.activateTrainer(username, user.password());
         } else {
-            facade.deactivateTrainer(request.username(), user.password());
+            facade.deactivateTrainer(username, user.password());
         }
 
         return ResponseEntity.ok().build();

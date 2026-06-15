@@ -49,26 +49,27 @@ public class TraineeRestController {
     }
 
     @GetMapping("/{username}")
-    public TraineeProfileResponse getTraineeProfile(@PathVariable String username,
-                                                     HttpServletRequest httpRequest) {
-
-        requireText(username, "username");
+    public TraineeProfileResponse getTraineeProfile(
+            @PathVariable String username,
+            HttpServletRequest httpRequest) {
 
         AuthenticatedUser user =
                 authenticationService.requireTrainee(httpRequest, username);
 
-        Trainee trainee = facade.getTraineeByUsername(username, user.password()).orElseThrow();
+        Trainee trainee = facade.getTraineeByUsername(username, user.password())
+                .orElseThrow();
 
         return toTraineeProfileResponse(trainee);
     }
 
-    @PutMapping
+    @PutMapping("/{username}")
     public TraineeProfileResponse updateTraineeProfile(
+            @PathVariable String username,
             @Valid @RequestBody UpdateTraineeProfileRequest request,
             HttpServletRequest httpRequest) {
 
         AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, request.username());
+                authenticationService.requireTrainee(httpRequest, username);
 
         Trainee update = new Trainee();
         update.setFirstName(request.firstName());
@@ -77,27 +78,23 @@ public class TraineeRestController {
         update.setAddress(request.address());
         update.setActive(request.isActive());
 
-        Trainee updated = facade.updateTrainee(
-                request.username(),
-                user.password(),
-                update
-        ).orElseThrow();
+        Trainee updated = facade.updateTrainee(username, user.password(), update)
+                .orElseThrow();
 
         return toTraineeProfileResponse(updated);
     }
 
     @DeleteMapping("/{username}")
-    public ResponseEntity<Void> deleteTraineeProfile(@PathVariable String username,
-                                                      HttpServletRequest httpRequest) {
-
-        requireText(username, "username");
+    public ResponseEntity<Void> deleteTraineeProfile(
+            @PathVariable String username,
+            HttpServletRequest httpRequest) {
 
         AuthenticatedUser user =
                 authenticationService.requireTrainee(httpRequest, username);
 
         facade.deleteTrainee(username, user.password());
 
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{username}/unassigned-trainers")
@@ -116,28 +113,28 @@ public class TraineeRestController {
                 .toList();
     }
 
-    @PutMapping("/trainers")
+    @PutMapping("/{username}/trainers")
     public List<TrainerSummaryResponse> updateTraineeTrainers(
+            @PathVariable String username,
             @Valid @RequestBody UpdateTraineeTrainersRequest request,
             HttpServletRequest httpRequest) {
 
         AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, request.traineeUsername());
+                authenticationService.requireTrainee(httpRequest, username);
 
         List<String> trainerUsernames = request.trainersList()
                 .stream()
-                .map(t -> t.trainerUsername())
+                .map(TrainerUsernameRequest::trainerUsername)
                 .toList();
 
         Trainee updated = facade.updateTraineeTrainers(
-                request.traineeUsername(),
+                username,
                 user.password(),
                 trainerUsernames
         );
 
         return safeStream(updated.getTrainers())
                 .map(this::toTrainerSummaryResponse)
-                .sorted(Comparator.comparing(TrainerSummaryResponse::trainerUsername))
                 .toList();
     }
 
@@ -168,18 +165,19 @@ public class TraineeRestController {
                 .toList();
     }
 
-    @PatchMapping("/status")
+    @PatchMapping("/{username}/status")
     public ResponseEntity<Void> changeTraineeActiveStatus(
+            @PathVariable String username,
             @Valid @RequestBody ActiveStatusRequest request,
             HttpServletRequest httpRequest) {
 
         AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, request.username());
+                authenticationService.requireTrainee(httpRequest, username);
 
         if (request.isActive()) {
-            facade.activateTrainee(request.username(), user.password());
+            facade.activateTrainee(username, user.password());
         } else {
-            facade.deactivateTrainee(request.username(), user.password());
+            facade.deactivateTrainee(username, user.password());
         }
 
         return ResponseEntity.ok().build();

@@ -25,17 +25,15 @@ class TrainingRestControllerTest extends BaseControllerTest {
         when(auth.requireTrainee(any(), eq("trainee")))
                 .thenReturn(new AuthenticatedUser("trainee", "pass", RestUserRole.TRAINEE));
 
-        mockMvc.perform(post("/api/trainings")
+        mockMvc.perform(post("/api/trainings/trainees/trainee/trainers/trainer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                        {
-                          "traineeUsername":"trainee",
-                          "trainerUsername":"trainer",
-                          "trainingName":"Gym",
-                          "trainingDuration":60,
-                          "trainingDate":"2026-06-10"
-                        }
-                    """))
+                {
+                  "trainingName":"Gym",
+                  "trainingDuration":60,
+                  "trainingDate":"2026-06-10"
+                }
+            """))
                 .andExpect(status().isOk());
 
         verify(facade).addTraining(

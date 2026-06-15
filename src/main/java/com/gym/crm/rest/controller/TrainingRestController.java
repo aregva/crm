@@ -29,21 +29,20 @@ public class TrainingRestController {
         this.authenticationService = authenticationService;
     }
 
-    @PostMapping
+    @PostMapping("/trainees/{traineeUsername}/trainers/{trainerUsername}")
     public ResponseEntity<Void> addTraining(
+            @PathVariable String traineeUsername,
+            @PathVariable String trainerUsername,
             @Valid @RequestBody AddTrainingRequest request,
             HttpServletRequest httpRequest) {
 
         AuthenticatedUser user =
-                authenticationService.requireTrainee(
-                        httpRequest,
-                        request.traineeUsername()
-                );
+                authenticationService.requireTrainee(httpRequest, traineeUsername);
 
         facade.addTraining(
-                request.traineeUsername(),
+                traineeUsername,
                 user.password(),
-                request.trainerUsername(),
+                trainerUsername,
                 request.trainingName(),
                 request.trainingDate(),
                 request.trainingDuration()
