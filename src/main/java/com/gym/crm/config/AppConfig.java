@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
 @ComponentScan("com.gym.crm")
-@PropertySource("classpath:application.yml")
+@PropertySource("classpath:application.properties")
 @EnableTransactionManagement
 public class AppConfig {
 
