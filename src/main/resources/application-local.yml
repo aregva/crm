@@ -1,0 +1,25 @@
+db:
+  url: jdbc:h2:mem:gymcrm;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+  username: sa
+  password: ""
+
+hibernate:
+  dialect: org.hibernate.dialect.H2Dialect
+  hbm2ddl:
+    auto: create-drop
+  show_sql: false
+
+storage:
+  init:
+    trainees-file: classpath:trainees-data.txt
+    trainers-file: classpath:trainers-data.txt
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+    health:
+      show-details: always
+

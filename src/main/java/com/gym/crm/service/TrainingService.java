@@ -1,5 +1,6 @@
 package com.gym.crm.service;
 
+import com.gym.crm.actuator.metrics.GymMetrics;
 import com.gym.crm.dao.TraineeDao;
 import com.gym.crm.dao.TrainerDao;
 import com.gym.crm.dao.TrainingDao;
@@ -25,15 +26,18 @@ public class TrainingService {
     private final TraineeDao traineeDao;
     private final TrainerDao trainerDao;
     private final TrainingTypeDao trainingTypeDao;
+    private final GymMetrics metrics;
 
     public TrainingService(TrainingDao trainingDao,
                            TraineeDao traineeDao,
                            TrainerDao trainerDao,
-                           TrainingTypeDao trainingTypeDao) {
+                           TrainingTypeDao trainingTypeDao,
+                           GymMetrics metrics) {
         this.trainingDao = trainingDao;
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.trainingTypeDao = trainingTypeDao;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -42,6 +46,7 @@ public class TrainingService {
         resolveReferences(training);
 
         Training saved = trainingDao.save(training);
+        metrics.incrementTrainingCreated();
         log.info("Created training id={}, name={}", saved.getId(), saved.getTrainingName());
         return saved;
     }

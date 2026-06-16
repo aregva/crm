@@ -1,5 +1,6 @@
 package com.gym.crm.service;
 
+import com.gym.crm.actuator.metrics.GymMetrics;
 import com.gym.crm.dao.TraineeDao;
 import com.gym.crm.dao.TrainerDao;
 import com.gym.crm.dao.TrainingTypeDao;
@@ -23,17 +24,20 @@ public class TrainerService {
     private final TrainingTypeDao trainingTypeDao;
     private final UsernameGenerator usernameGenerator;
     private final PasswordGenerator passwordGenerator;
+    private final GymMetrics metrics;
 
     public TrainerService(TrainerDao trainerDao,
                           TraineeDao traineeDao,
                           TrainingTypeDao trainingTypeDao,
                           UsernameGenerator usernameGenerator,
-                          PasswordGenerator passwordGenerator) {
+                          PasswordGenerator passwordGenerator,
+                          GymMetrics metrics) {
         this.trainerDao = trainerDao;
         this.traineeDao = traineeDao;
         this.trainingTypeDao = trainingTypeDao;
         this.usernameGenerator = usernameGenerator;
         this.passwordGenerator = passwordGenerator;
+        this.metrics = metrics;
     }
 
     @Transactional
@@ -57,6 +61,7 @@ public class TrainerService {
         trainer.setPassword(generatedPassword);
 
         Trainer saved = trainerDao.save(trainer);
+        metrics.incrementTrainerCreated();
         log.info("Created trainer id={}, username={}", saved.getId(), saved.getUsername());
         return saved;
     }
@@ -79,7 +84,10 @@ public class TrainerService {
 
     @Transactional(readOnly = true)
     public boolean authenticate(String username, String password) {
-        return trainerDao.passwordMatches(username, password);
+        boolean result = trainerDao.passwordMatches(username, password);
+        if (result){metrics.incrementLoginSuccess();}
+        else {metrics.incrementLoginFailed();}
+        return result;
     }
 
     @Transactional
