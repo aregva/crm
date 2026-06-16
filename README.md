@@ -1,12 +1,23 @@
-Here is the complete `README.md` file contents matching the specification of your Gym CRM application. You can copy and save this entire block directly as a Markdown file:
+# Gym CRM (Spring Boot Edition)
 
-```markdown
-# Gym CRM Hibernate
+A comprehensive CRM backend system for a Gym management ecosystem, built using **Java 17, Spring Boot, Spring Web (REST), Hibernate ORM 6, and an embedded H2 database**.
 
-A comprehensive CRM backend system for a Gym management ecosystem, built using Java 17, Spring Core, Spring MVC (REST views), Hibernate ORM 6, and an embedded H2 database. 
+The architecture follows a layered design:
 
-The architecture strictly separates responsibilities into four layers:
 $$\text{Controller} \longrightarrow \text{Facade} \longrightarrow \text{Service} \longrightarrow \text{DAO (Hibernate Mapping)}$$
+
+---
+
+## 🚀 Migration Note (Spring Boot)
+
+This project was migrated from **Spring Core (manual configuration)** to **Spring Boot**.
+
+Key changes:
+- Replaced `AnnotationConfigApplicationContext` with **Spring Boot auto-configured context**
+- Introduced `@SpringBootApplication`
+- Enabled **auto-configuration of DataSource and Hibernate**
+- Environment-based configuration via `application-{profile}.properties`
+- Test support via `@SpringBootTest` and `@ActiveProfiles("local")`
 
 ---
 
@@ -14,30 +25,30 @@ $$\text{Controller} \longrightarrow \text{Facade} \longrightarrow \text{Service}
 
 The data access layer manages a relational schema utilizing an atomic structure where core profile metadata is decoupled from specialized roles:
 
-* **`users`**: Houses shared authentication and credential metadata (`id`, `firstName`, `lastName`, `username`, `password`, `isActive`).
-* **`trainee`**: Extends a `users` reference with trainee metrics (`dateOfBirth`, `address`).
-* **`trainer`**: Extends a `users` reference with technical specializations (`specializationType`).
-* **`training`**: Connective transactional ledger linking a Trainee, a Trainer, and a specific `training_type`.
-* **`training_type`**: Immutable catalog tracking available gym training genres (e.g., YOGA, FITNESS).
-* **`trainee_trainer`**: Many-to-many join relationship structure linking trainees to their circle of ongoing mentors.
+* **`users`**: Houses shared authentication and credential metadata (`id`, `firstName`, `lastName`, `username`, `password`, `isActive`)
+* **`trainee`**: Extends a `users` reference with trainee metrics (`dateOfBirth`, `address`)
+* **`trainer`**: Extends a `users` reference with technical specializations (`specializationType`)
+* **`training`**: Connective transactional ledger linking a Trainee, a Trainer, and a specific `training_type`
+* **`training_type`**: Immutable catalog tracking available gym training genres (e.g., YOGA, FITNESS)
+* **`trainee_trainer`**: Many-to-many join relationship structure linking trainees to trainers
 
 ---
 
 ## 🔒 Business & Authentication Rules
 
-1. **API Scope**: All REST routes are contained strictly under the `/api/**` context path.
-2. **Authentication requirement**: Open endpoints are restricted entirely to Registration routes. All other execution calls require **HTTP Basic Authentication** verified through the application layer via `RestAuthenticationService`.
-3. **Role Mutability Constraint**: An identity is exclusive. An initialized user record cannot simultaneously act as both a Trainer and a Trainee.
-4. **Username Immutability**: Usernames are auto-generated safely during registration and cannot be changed during profile updates.
-5. **Ledger Constraint**: Trainings are append-only. Once logged, training session records can neither be modified nor deleted via REST layers.
-6. **Hard Cascade Removal**: Removing a trainee triggers an atomic hard-delete cascade that clears down all dependent trainer ledger bindings and training sessions.
+1. **API Scope**: All REST routes are contained under `/api/**`
+2. **Authentication**: All endpoints except registration require authentication via `RestAuthenticationService`
+3. **Role Mutability Constraint**: A user can act as either Trainer or Trainee, never both
+4. **Username Immutability**: Usernames are generated at registration and cannot be changed
+5. **Training Ledger**: Trainings are append-only records (no update/delete via REST)
+6. **Hard Cascade Removal**: Deleting a trainee removes all related training and associations
 
 ---
 
 ## 🌐 REST API Endpoints
 
 ### 1. Trainee Registration
-* **Route**: `POST /api/trainees/register`
+* **Route**: `POST /api/trainees`
 * **Access**: Public
 
 #### Request Body
@@ -48,50 +59,52 @@ The data access layer manages a relational schema utilizing an atomic structure 
   "dateOfBirth": "2000-01-01",
   "address": "Yerevan"
 }
-
-```
-
-#### Response Body (`200 OK`)
-
-```json
+Response
 {
   "username": "john.smith",
   "password": "generatedPassword"
 }
-
-```
-
----
-
-### 2. Trainer Registration
-
-* **Route**: `POST /api/trainers/register`
-* **Access**: Public
-
-#### Request Body
-
-```json
+2. Trainer Registration
+Route: POST /api/trainers
+Access: Public
+Request Body
 {
-  "firstName": "Jane",
-  "lastName": "Doe",
-  "specialization": "YOGA"
+"firstName": "Jane",
+"lastName": "Doe",
+"specialization": "YOGA"
 }
-
-```
-
-#### Response Body (`200 OK`)
-
-```json
+Response
 {
-  "username": "jane.doe",
-  "password": "generatedPassword"
+"username": "jane.doe",
+"password": "generatedPassword"
 }
+🧪 Testing
 
-```
+After migration to Spring Boot:
 
----
+Unit tests now run under Spring Boot context when needed
+Integration tests use @SpringBootTest
+Profile-based testing uses @ActiveProfiles("local")
+Embedded H2 database is used for all test executions
 
-### 3. Login
+Example:
+
+@SpringBootTest
+@ActiveProfiles("local")
+class GymFacadeTest {
+}
+⚙️ Configuration
+application-local.properties
+db.url=jdbc:h2:mem:gymdb
+db.username=sa
+db.password=
+db.driver=org.h2.Driver
+🏁 Summary of Migration Benefits
+Simplified configuration via Spring Boot auto-configuration
+Profile-based environments (local, test, prod)
+Cleaner test setup with Spring Boot test support
+Reduced boilerplate (no manual context creation)
+Better scalability for REST and future microservices migration### 3. Login
 
 * **Route**: `GET /api/auth/login`
 * **Access**: Basic Auth Authenticated
