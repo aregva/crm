@@ -57,6 +57,9 @@ public class Trainer {
     public String getPassword() { return user.getPassword(); }
     public void setPassword(String password) { user.setPassword(password); }
 
+    public String getGeneratedPassword() { return user.getGeneratedPassword(); }
+    public void setGeneratedPassword(String generatedPassword) { user.setGeneratedPassword(generatedPassword); }
+
     public boolean isActive() { return user.isActive(); }
     public void setActive(boolean active) { user.setActive(active); }
 

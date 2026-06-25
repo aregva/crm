@@ -54,17 +54,6 @@ public class TraineeDao {
                 .uniqueResult() > 0;
     }
 
-    public boolean passwordMatches(String username, String password) {
-        return sessionFactory.getCurrentSession()
-                .createQuery("""
-                        select count(t.id) from Trainee t
-                        where t.user.username = :username and t.user.password = :password
-                        """, Long.class)
-                .setParameter("username", username)
-                .setParameter("password", password)
-                .uniqueResult() > 0;
-    }
-
     @Transactional
     public void delete(Trainee trainee) {
         sessionFactory.getCurrentSession().remove(trainee);

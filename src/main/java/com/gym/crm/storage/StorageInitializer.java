@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -30,6 +31,7 @@ public class StorageInitializer implements InitializingBean {
     private final TraineeDataParser traineeDataParser;
     private final TrainerDataParser trainerDataParser;
     private final PasswordGenerator passwordGenerator;
+    private final PasswordEncoder passwordEncoder;
     private final Resource traineesResource;
     private final Resource trainersResource;
     private final TransactionTemplate transactionTemplate;
@@ -40,6 +42,7 @@ public class StorageInitializer implements InitializingBean {
                               TraineeDataParser traineeDataParser,
                               TrainerDataParser trainerDataParser,
                               PasswordGenerator passwordGenerator,
+                              PasswordEncoder passwordEncoder,
                               @Value("${storage.init.trainees-file}") Resource traineesResource,
                               @Value("${storage.init.trainers-file}") Resource trainersResource,
                               PlatformTransactionManager transactionManager) {
@@ -49,6 +52,7 @@ public class StorageInitializer implements InitializingBean {
         this.traineeDataParser = traineeDataParser;
         this.trainerDataParser = trainerDataParser;
         this.passwordGenerator = passwordGenerator;
+        this.passwordEncoder = passwordEncoder;
         this.traineesResource = traineesResource;
         this.trainersResource = trainersResource;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -96,15 +100,25 @@ public class StorageInitializer implements InitializingBean {
     }
 
     private void ensurePassword(Trainee trainee) {
-        if (trainee.getPassword() == null || trainee.getPassword().isBlank()) {
-            trainee.setPassword(passwordGenerator.generate(10));
+        String password = trainee.getPassword();
+        if (password == null || password.isBlank()) {
+            password = passwordGenerator.generate(10);
         }
+        trainee.setGeneratedPassword(password);
+        trainee.setPassword(isBcryptHash(password) ? password : passwordEncoder.encode(password));
     }
 
     private void ensurePassword(Trainer trainer) {
-        if (trainer.getPassword() == null || trainer.getPassword().isBlank()) {
-            trainer.setPassword(passwordGenerator.generate(10));
+        String password = trainer.getPassword();
+        if (password == null || password.isBlank()) {
+            password = passwordGenerator.generate(10);
         }
+        trainer.setGeneratedPassword(password);
+        trainer.setPassword(isBcryptHash(password) ? password : passwordEncoder.encode(password));
+    }
+
+    private boolean isBcryptHash(String password) {
+        return password.startsWith("$2a$") || password.startsWith("$2b$") || password.startsWith("$2y$");
     }
 
     private void validateUniqueUsernames(List<Trainee> trainees, List<Trainer> trainers) {

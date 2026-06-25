@@ -139,14 +139,14 @@ class TrainingServiceTest {
 
         assertEquals(1, trainingService.getTraineeTrainings(
                 trainee.getUsername(),
-                trainee.getPassword(),
+                trainee.getGeneratedPassword(),
                 LocalDate.of(2026, 5, 1),
                 LocalDate.of(2026, 5, 31),
                 "Clara Snow",
                 "CARDIO").size());
         assertEquals(1, trainingService.getTrainerTrainings(
                 trainer.getUsername(),
-                trainer.getPassword(),
+                trainer.getGeneratedPassword(),
                 LocalDate.of(2026, 5, 1),
                 LocalDate.of(2026, 5, 31),
                 "Peter Young").size());

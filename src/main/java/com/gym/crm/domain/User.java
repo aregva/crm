@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name = "users")
@@ -30,6 +31,9 @@ public class User {
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
+    @Transient
+    private String generatedPassword;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -47,4 +51,7 @@ public class User {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
+    public String getGeneratedPassword() { return generatedPassword; }
+    public void setGeneratedPassword(String generatedPassword) { this.generatedPassword = generatedPassword; }
 }

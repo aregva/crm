@@ -9,6 +9,7 @@ import com.gym.crm.util.PasswordGenerator;
 import com.gym.crm.util.UsernameGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,17 +26,20 @@ public class TraineeService {
     private final TrainerDao trainerDao;
     private final UsernameGenerator usernameGenerator;
     private final PasswordGenerator passwordGenerator;
+    private final PasswordEncoder passwordEncoder;
     private final GymMetrics metrics;
 
     public TraineeService(TraineeDao traineeDao,
                           TrainerDao trainerDao,
                           UsernameGenerator usernameGenerator,
                           PasswordGenerator passwordGenerator,
+                          PasswordEncoder passwordEncoder,
                           GymMetrics gymMetrics) {
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.usernameGenerator = usernameGenerator;
         this.passwordGenerator = passwordGenerator;
+        this.passwordEncoder = passwordEncoder;
         this.metrics = gymMetrics;
     }
 
@@ -49,22 +53,24 @@ public class TraineeService {
         String base = usernameGenerator.generateBase(trainee.getFirstName(), trainee.getLastName());
         String uniqueUsername = usernameGenerator.makeUnique(base, this::usernameExists);
         String generatedPassword = passwordGenerator.generate(10);
+        String encodedPassword = passwordEncoder.encode(generatedPassword);
 
-        // FIX: Populate top-level fields
         trainee.setUsername(uniqueUsername);
-        trainee.setPassword(generatedPassword);
+        trainee.setPassword(encodedPassword);
+        trainee.setGeneratedPassword(generatedPassword);
 
-        // FIX: Synchronize underlying Hibernate User relational mapping object
         if (trainee.getUser() == null) {
             trainee.setUser(new com.gym.crm.domain.User());
         }
         trainee.getUser().setFirstName(trainee.getFirstName());
         trainee.getUser().setLastName(trainee.getLastName());
         trainee.getUser().setUsername(uniqueUsername);
-        trainee.getUser().setPassword(generatedPassword);
+        trainee.getUser().setPassword(encodedPassword);
+        trainee.getUser().setGeneratedPassword(generatedPassword);
         trainee.getUser().setActive(true);
 
         Trainee saved = traineeDao.save(trainee);
+        saved.setGeneratedPassword(generatedPassword);
         metrics.incrementTraineeCreated();
         log.info("Created trainee id={}, username={}", saved.getId(), saved.getUsername());
         return saved;
@@ -88,7 +94,10 @@ public class TraineeService {
 
     @Transactional(readOnly = true)
     public boolean authenticate(String username, String password) {
-        boolean result = traineeDao.passwordMatches(username, password);
+        boolean result = traineeDao.findByUsername(username)
+                .map(Trainee::getPassword)
+                .filter(encodedPassword -> password != null && passwordEncoder.matches(password, encodedPassword))
+                .isPresent();
         if (result){metrics.incrementLoginSuccess();}
         else {metrics.incrementLoginFailed();}
         return result;
@@ -104,6 +113,11 @@ public class TraineeService {
     @Transactional
     public Optional<Trainee> update(String username, String password, Trainee update) {
         authenticateOrThrow(username, password);
+        return updateAuthenticated(username, update);
+    }
+
+    @Transactional
+    public Optional<Trainee> updateAuthenticated(String username, Trainee update) {
         return traineeDao.findByUsername(username)
                 .map(trainee -> applyUpdate(trainee, update));
     }
@@ -114,7 +128,7 @@ public class TraineeService {
         ValidationUtils.requireText(newPassword, "newPassword");
 
         Trainee trainee = traineeDao.findByUsername(username).orElseThrow();
-        trainee.setPassword(newPassword);
+        trainee.setPassword(passwordEncoder.encode(newPassword));
         log.info("Changed trainee password username={}", username);
     }
 
@@ -124,8 +138,18 @@ public class TraineeService {
     }
 
     @Transactional
+    public void activateAuthenticated(String username) {
+        changeActiveAuthenticated(username, true);
+    }
+
+    @Transactional
     public void deactivate(String username, String password) {
         changeActive(username, password, false);
+    }
+
+    @Transactional
+    public void deactivateAuthenticated(String username) {
+        changeActiveAuthenticated(username, false);
     }
 
     @Transactional
@@ -140,6 +164,11 @@ public class TraineeService {
     @Transactional
     public void deleteByUsername(String username, String password) {
         authenticateOrThrow(username, password);
+        deleteByUsernameAuthenticated(username);
+    }
+
+    @Transactional
+    public void deleteByUsernameAuthenticated(String username) {
         Trainee trainee = traineeDao.findByUsername(username).orElseThrow();
         traineeDao.delete(trainee);
         log.info("Deleted trainee username={}", username);
@@ -148,12 +177,22 @@ public class TraineeService {
     @Transactional(readOnly = true)
     public List<Trainer> getUnassignedTrainers(String traineeUsername, String password) {
         authenticateOrThrow(traineeUsername, password);
+        return getUnassignedTrainersAuthenticated(traineeUsername);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Trainer> getUnassignedTrainersAuthenticated(String traineeUsername) {
         return traineeDao.findUnassignedTrainers(traineeUsername);
     }
 
     @Transactional
     public Trainee updateTrainers(String traineeUsername, String password, List<String> trainerUsernames) {
         authenticateOrThrow(traineeUsername, password);
+        return updateTrainersAuthenticated(traineeUsername, trainerUsernames);
+    }
+
+    @Transactional
+    public Trainee updateTrainersAuthenticated(String traineeUsername, List<String> trainerUsernames) {
         Trainee trainee = traineeDao.findByUsername(traineeUsername).orElseThrow();
         Set<Trainer> trainers = new HashSet<>();
         for (String trainerUsername : trainerUsernames) {
@@ -185,6 +224,10 @@ public class TraineeService {
 
     private void changeActive(String username, String password, boolean active) {
         authenticateOrThrow(username, password);
+        changeActiveAuthenticated(username, active);
+    }
+
+    private void changeActiveAuthenticated(String username, boolean active) {
         Trainee trainee = traineeDao.findByUsername(username).orElseThrow();
         if (trainee.isActive() == active) {
             throw new IllegalStateException("Trainee active state is already " + active);

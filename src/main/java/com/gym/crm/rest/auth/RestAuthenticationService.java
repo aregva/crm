@@ -1,17 +1,15 @@
 package com.gym.crm.rest.auth;
 
 import com.gym.crm.facade.GymFacade;
+import com.gym.crm.security.GymUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 
 @Component
 public class RestAuthenticationService {
-    private static final String AUTHORIZATION = "Authorization";
-    private static final String BASIC_PREFIX = "Basic ";
-
     private final GymFacade facade;
 
     public RestAuthenticationService(GymFacade facade) {
@@ -19,14 +17,17 @@ public class RestAuthenticationService {
     }
 
     public AuthenticatedUser requireAuthenticated(HttpServletRequest request) {
-        BasicCredentials credentials = readBasicCredentials(request);
-        if (facade.authenticateTrainee(credentials.username(), credentials.password())) {
-            return new AuthenticatedUser(credentials.username(), credentials.password(), RestUserRole.TRAINEE);
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new SecurityException("Authentication is required");
         }
-        if (facade.authenticateTrainer(credentials.username(), credentials.password())) {
-            return new AuthenticatedUser(credentials.username(), credentials.password(), RestUserRole.TRAINER);
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof GymUserDetails userDetails) {
+            return new AuthenticatedUser(userDetails.getUsername(), userDetails.getRole());
         }
-        throw new SecurityException("Invalid credentials");
+
+        return new AuthenticatedUser(authentication.getName(), resolveRole(authentication));
     }
 
     public AuthenticatedUser requireTrainee(HttpServletRequest request, String username) {
@@ -55,27 +56,15 @@ public class RestAuthenticationService {
         throw new SecurityException("Invalid credentials");
     }
 
-    private BasicCredentials readBasicCredentials(HttpServletRequest request) {
-        String authorization = request.getHeader(AUTHORIZATION);
-        if (authorization == null || !authorization.startsWith(BASIC_PREFIX)) {
-            throw new SecurityException("HTTP Basic authentication is required");
+    private RestUserRole resolveRole(Authentication authentication) {
+        for (GrantedAuthority authority : authentication.getAuthorities()) {
+            if ("ROLE_TRAINEE".equals(authority.getAuthority())) {
+                return RestUserRole.TRAINEE;
+            }
+            if ("ROLE_TRAINER".equals(authority.getAuthority())) {
+                return RestUserRole.TRAINER;
+            }
         }
-
-        String encoded = authorization.substring(BASIC_PREFIX.length()).trim();
-        String decoded;
-        try {
-            decoded = new String(Base64.getDecoder().decode(encoded), StandardCharsets.UTF_8);
-        } catch (IllegalArgumentException ex) {
-            throw new SecurityException("Invalid HTTP Basic authentication header");
-        }
-
-        int separator = decoded.indexOf(':');
-        if (separator < 1) {
-            throw new SecurityException("Invalid HTTP Basic authentication header");
-        }
-        return new BasicCredentials(decoded.substring(0, separator), decoded.substring(separator + 1));
-    }
-
-    private record BasicCredentials(String username, String password) {
+        throw new SecurityException("Authenticated user role is missing");
     }
 }

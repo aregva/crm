@@ -27,7 +27,7 @@ class TrainingTypeRestControllerTest extends BaseControllerTest {
         t.setTrainingTypeName("Yoga");
 
         when(auth.requireAuthenticated(any()))
-                .thenReturn(new AuthenticatedUser("john", "pass", RestUserRole.TRAINEE));
+                .thenReturn(new AuthenticatedUser("john", RestUserRole.TRAINEE));
 
         when(facade.getTrainingTypes()).thenReturn(List.of(t));
 

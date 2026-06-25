@@ -18,3 +18,8 @@ management:
   metrics:
     tags:
       application: gym-crm
+
+security:
+  jwt:
+    secret: change-this-development-secret-at-least-32-bytes-long
+    expiration-minutes: 60

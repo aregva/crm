@@ -30,7 +30,7 @@ class TraineeRestControllerTest extends BaseControllerTest {
 
         Trainee t = new Trainee();
         t.setUsername("john");
-        t.setPassword("pass");
+        t.setGeneratedPassword("pass");
 
         when(facade.createTrainee(any())).thenReturn(t);
 
@@ -48,9 +48,9 @@ class TraineeRestControllerTest extends BaseControllerTest {
         t.setUsername("john");
 
         when(auth.requireTrainee(any(), eq("john")))
-                .thenReturn(new AuthenticatedUser("john", "pass", RestUserRole.TRAINEE));
+                .thenReturn(new AuthenticatedUser("john", RestUserRole.TRAINEE));
 
-        when(facade.getTraineeByUsername("john", "pass"))
+        when(facade.getTraineeByUsername("john"))
                 .thenReturn(Optional.of(t));
 
         mockMvc.perform(get("/api/trainees/john"))
@@ -62,11 +62,11 @@ class TraineeRestControllerTest extends BaseControllerTest {
     void deleteProfile() throws Exception {
 
         when(auth.requireTrainee(any(), eq("john")))
-                .thenReturn(new AuthenticatedUser("john", "pass", RestUserRole.TRAINEE));
+                .thenReturn(new AuthenticatedUser("john", RestUserRole.TRAINEE));
 
         mockMvc.perform(delete("/api/trainees/john"))
                 .andExpect(status().isNoContent());
 
-        verify(facade).deleteTrainee("john", "pass");
+        verify(facade).deleteTrainee("john");
     }
 }

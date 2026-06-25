@@ -26,7 +26,7 @@ class TrainerRestControllerTest extends BaseControllerTest {
 
         Trainer t = new Trainer();
         t.setUsername("john");
-        t.setPassword("pass");
+        t.setGeneratedPassword("pass");
 
         when(facade.createTrainer(any())).thenReturn(t);
 
@@ -48,9 +48,9 @@ class TrainerRestControllerTest extends BaseControllerTest {
         t.setUsername("john");
 
         when(auth.requireTrainer(any(), eq("john")))
-                .thenReturn(new AuthenticatedUser("john", "pass", RestUserRole.TRAINER));
+                .thenReturn(new AuthenticatedUser("john", RestUserRole.TRAINER));
 
-        when(facade.getTrainerByUsername("john", "pass"))
+        when(facade.getTrainerByUsername("john"))
                 .thenReturn(Optional.of(t));
 
         mockMvc.perform(get("/api/trainers/john"))
@@ -62,7 +62,7 @@ class TrainerRestControllerTest extends BaseControllerTest {
     void changeStatus() throws Exception {
 
         when(auth.requireTrainer(any(), eq("john")))
-                .thenReturn(new AuthenticatedUser("john", "pass", RestUserRole.TRAINER));
+                .thenReturn(new AuthenticatedUser("john", RestUserRole.TRAINER));
 
         mockMvc.perform(patch("/api/trainers/john/status")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,6 +71,6 @@ class TrainerRestControllerTest extends BaseControllerTest {
                         """))
                 .andExpect(status().isOk());
 
-        verify(facade).activateTrainer("john", "pass");
+        verify(facade).activateTrainer("john");
     }
 }

@@ -33,8 +33,9 @@ class TrainerServiceTest {
 
         assertNotNull(created.getId());
         assertEquals("Mike.Tyson", created.getUsername());
-        assertNotNull(created.getPassword());
-        assertEquals(10, created.getPassword().length());
+        assertNotNull(created.getGeneratedPassword());
+        assertEquals(10, created.getGeneratedPassword().length());
+        assertTrue(created.getPassword().startsWith("$2"));
         ctx.close();
     }
 
@@ -137,7 +138,7 @@ class TrainerServiceTest {
         Trainer update = trainer("Garry", "Holt", "STRENGTH");
         update.setActive(false);
 
-        Optional<Trainer> updated = trainerService.update(created.getUsername(), created.getPassword(), update);
+        Optional<Trainer> updated = trainerService.update(created.getUsername(), created.getGeneratedPassword(), update);
 
         assertTrue(updated.isPresent());
         assertEquals("Garry", updated.get().getFirstName());
@@ -159,9 +160,9 @@ class TrainerServiceTest {
     void changePassword_ShouldUpdateCredentials() {
         Trainer created = trainerService.create(trainer("Evan", "Cole", "CROSSFIT"));
 
-        trainerService.changePassword(created.getUsername(), created.getPassword(), "new-password");
+        trainerService.changePassword(created.getUsername(), created.getGeneratedPassword(), "new-password");
 
-        assertFalse(trainerService.authenticate(created.getUsername(), created.getPassword()));
+        assertFalse(trainerService.authenticate(created.getUsername(), created.getGeneratedPassword()));
         assertTrue(trainerService.authenticate(created.getUsername(), "new-password"));
         ctx.close();
     }
@@ -171,13 +172,13 @@ class TrainerServiceTest {
         Trainer created = trainerService.create(trainer("Grace", "Hill", "YOGA"));
 
         assertThrows(IllegalStateException.class,
-                () -> trainerService.activate(created.getUsername(), created.getPassword()));
+                () -> trainerService.activate(created.getUsername(), created.getGeneratedPassword()));
 
-        trainerService.deactivate(created.getUsername(), created.getPassword());
+        trainerService.deactivate(created.getUsername(), created.getGeneratedPassword());
         assertThrows(IllegalStateException.class,
-                () -> trainerService.deactivate(created.getUsername(), created.getPassword()));
+                () -> trainerService.deactivate(created.getUsername(), created.getGeneratedPassword()));
 
-        trainerService.activate(created.getUsername(), created.getPassword());
+        trainerService.activate(created.getUsername(), created.getGeneratedPassword());
         assertTrue(trainerService.selectByUsername(created.getUsername()).orElseThrow().isActive());
         ctx.close();
     }

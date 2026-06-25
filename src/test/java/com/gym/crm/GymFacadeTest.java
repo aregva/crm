@@ -42,7 +42,8 @@ class GymFacadeTest {
         assertTrue(loaded.isPresent());
         assertEquals("John", loaded.get().getFirstName());
         assertNotNull(loaded.get().getUsername());
-        assertEquals(10, loaded.get().getPassword().length());
+        assertEquals(10, created.getGeneratedPassword().length());
+        assertTrue(loaded.get().getPassword().startsWith("$2"));
 
         ctx.close();
     }
@@ -91,7 +92,8 @@ class GymFacadeTest {
         assertTrue(loaded.isPresent());
         assertEquals("Kate", loaded.get().getFirstName());
         assertNotNull(loaded.get().getUsername());
-        assertEquals(10, loaded.get().getPassword().length());
+        assertEquals(10, created.getGeneratedPassword().length());
+        assertTrue(loaded.get().getPassword().startsWith("$2"));
 
         ctx.close();
     }

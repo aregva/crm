@@ -3,7 +3,6 @@ package com.gym.crm.rest.controller;
 import com.gym.crm.domain.Trainee;
 import com.gym.crm.domain.Trainer;
 import com.gym.crm.facade.GymFacade;
-import com.gym.crm.rest.auth.AuthenticatedUser;
 import com.gym.crm.rest.auth.RestAuthenticationService;
 import com.gym.crm.rest.dto.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,7 +39,7 @@ public class TrainerRestController {
 
         Trainer created = facade.createTrainer(trainer);
 
-        return new RegistrationResponse(created.getUsername(), created.getPassword());
+        return new RegistrationResponse(created.getUsername(), created.getGeneratedPassword());
     }
 
     @GetMapping("/{username}")
@@ -49,10 +48,9 @@ public class TrainerRestController {
 
         requireText(username, "username");
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainer(httpRequest, username);
+        authenticationService.requireTrainer(httpRequest, username);
 
-        Trainer trainer = facade.getTrainerByUsername(username, user.password()).orElseThrow();
+        Trainer trainer = facade.getTrainerByUsername(username).orElseThrow();
 
         return toTrainerProfileResponse(trainer);
     }
@@ -63,12 +61,10 @@ public class TrainerRestController {
             @Valid @RequestBody UpdateTrainerProfileRequest request,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainer(httpRequest, username);
+        authenticationService.requireTrainer(httpRequest, username);
 
         Trainer existing = facade.getTrainerByUsername(
-                username,
-                user.password()
+                username
         ).orElseThrow();
 
         Trainer update = new Trainer();
@@ -81,7 +77,6 @@ public class TrainerRestController {
 
         Trainer updated = facade.updateTrainer(
                 username,
-                user.password(),
                 update
         ).orElseThrow();
 
@@ -94,13 +89,12 @@ public class TrainerRestController {
             @Valid @RequestBody ActiveStatusRequest request,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainer(httpRequest, username);
+        authenticationService.requireTrainer(httpRequest, username);
 
         if (request.isActive()) {
-            facade.activateTrainer(username, user.password());
+            facade.activateTrainer(username);
         } else {
-            facade.deactivateTrainer(username, user.password());
+            facade.deactivateTrainer(username);
         }
 
         return ResponseEntity.ok().build();

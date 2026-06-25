@@ -30,9 +30,9 @@ class StorageInitializationTest {
                     .findFirst();
 
             assertTrue(alice.isPresent());
-            assertEquals(10, alice.get().getPassword().length());
+            assertTrue(alice.get().getPassword().startsWith("$2"));
             assertTrue(mike.isPresent());
-            assertEquals(10, mike.get().getPassword().length());
+            assertTrue(mike.get().getPassword().startsWith("$2"));
         }
     }
 }

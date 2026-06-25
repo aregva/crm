@@ -10,6 +10,7 @@ import com.gym.crm.util.PasswordGenerator;
 import com.gym.crm.util.UsernameGenerator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,7 @@ public class TrainerService {
     private final TrainingTypeDao trainingTypeDao;
     private final UsernameGenerator usernameGenerator;
     private final PasswordGenerator passwordGenerator;
+    private final PasswordEncoder passwordEncoder;
     private final GymMetrics metrics;
 
     public TrainerService(TrainerDao trainerDao,
@@ -31,12 +33,14 @@ public class TrainerService {
                           TrainingTypeDao trainingTypeDao,
                           UsernameGenerator usernameGenerator,
                           PasswordGenerator passwordGenerator,
+                          PasswordEncoder passwordEncoder,
                           GymMetrics metrics) {
         this.trainerDao = trainerDao;
         this.traineeDao = traineeDao;
         this.trainingTypeDao = trainingTypeDao;
         this.usernameGenerator = usernameGenerator;
         this.passwordGenerator = passwordGenerator;
+        this.passwordEncoder = passwordEncoder;
         this.metrics = metrics;
     }
 
@@ -48,6 +52,7 @@ public class TrainerService {
         String base = usernameGenerator.generateBase(trainer.getFirstName(), trainer.getLastName());
         String uniqueUsername = usernameGenerator.makeUnique(base, this::usernameExists);
         String generatedPassword = passwordGenerator.generate(10);
+        String encodedPassword = passwordEncoder.encode(generatedPassword);
 
         if (trainer.getUser() == null) {
             trainer.setUser(new com.gym.crm.domain.User());
@@ -55,12 +60,16 @@ public class TrainerService {
         trainer.getUser().setFirstName(trainer.getFirstName());
         trainer.getUser().setLastName(trainer.getLastName());
         trainer.getUser().setUsername(uniqueUsername);
-        trainer.getUser().setPassword(generatedPassword);
+        trainer.getUser().setPassword(encodedPassword);
+        trainer.getUser().setGeneratedPassword(generatedPassword);
+        trainer.getUser().setActive(trainer.isActive());
 
         trainer.setUsername(uniqueUsername);
-        trainer.setPassword(generatedPassword);
+        trainer.setPassword(encodedPassword);
+        trainer.setGeneratedPassword(generatedPassword);
 
         Trainer saved = trainerDao.save(trainer);
+        saved.setGeneratedPassword(generatedPassword);
         metrics.incrementTrainerCreated();
         log.info("Created trainer id={}, username={}", saved.getId(), saved.getUsername());
         return saved;
@@ -84,7 +93,10 @@ public class TrainerService {
 
     @Transactional(readOnly = true)
     public boolean authenticate(String username, String password) {
-        boolean result = trainerDao.passwordMatches(username, password);
+        boolean result = trainerDao.findByUsername(username)
+                .map(Trainer::getPassword)
+                .filter(encodedPassword -> password != null && passwordEncoder.matches(password, encodedPassword))
+                .isPresent();
         if (result){metrics.incrementLoginSuccess();}
         else {metrics.incrementLoginFailed();}
         return result;
@@ -100,6 +112,11 @@ public class TrainerService {
     @Transactional
     public Optional<Trainer> update(String username, String password, Trainer update) {
         authenticateOrThrow(username, password);
+        return updateAuthenticated(username, update);
+    }
+
+    @Transactional
+    public Optional<Trainer> updateAuthenticated(String username, Trainer update) {
         return trainerDao.findByUsername(username)
                 .map(trainer -> applyUpdate(trainer, update));
     }
@@ -110,7 +127,7 @@ public class TrainerService {
         ValidationUtils.requireText(newPassword, "newPassword");
 
         Trainer trainer = trainerDao.findByUsername(username).orElseThrow();
-        trainer.setPassword(newPassword);
+        trainer.setPassword(passwordEncoder.encode(newPassword));
         log.info("Changed trainer password username={}", username);
     }
 
@@ -120,8 +137,18 @@ public class TrainerService {
     }
 
     @Transactional
+    public void activateAuthenticated(String username) {
+        changeActiveAuthenticated(username, true);
+    }
+
+    @Transactional
     public void deactivate(String username, String password) {
         changeActive(username, password, false);
+    }
+
+    @Transactional
+    public void deactivateAuthenticated(String username) {
+        changeActiveAuthenticated(username, false);
     }
 
     private Trainer applyUpdate(Trainer trainer, Trainer update) {
@@ -144,6 +171,10 @@ public class TrainerService {
 
     private void changeActive(String username, String password, boolean active) {
         authenticateOrThrow(username, password);
+        changeActiveAuthenticated(username, active);
+    }
+
+    private void changeActiveAuthenticated(String username, boolean active) {
         Trainer trainer = trainerDao.findByUsername(username).orElseThrow();
         if (trainer.isActive() == active) {
             throw new IllegalStateException("Trainer active state is already " + active);

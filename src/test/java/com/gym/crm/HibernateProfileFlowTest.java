@@ -34,7 +34,7 @@ class HibernateProfileFlowTest {
 
         Trainee created = facade.createTrainee(trainee);
         String username = created.getUsername();
-        String password = created.getPassword();
+        String password = created.getGeneratedPassword();
 
         assertTrue(facade.authenticateTrainee(username, password));
         assertTrue(facade.getTraineeByUsername(username, password).isPresent());
@@ -65,11 +65,11 @@ class HibernateProfileFlowTest {
         update.setSpecialization("STRENGTH");
         update.setActive(true);
 
-        Trainer updated = facade.updateTrainer(created.getUsername(), created.getPassword(), update).orElseThrow();
+        Trainer updated = facade.updateTrainer(created.getUsername(), created.getGeneratedPassword(), update).orElseThrow();
 
         assertEquals("Sara", updated.getFirstName());
         assertEquals("STRENGTH", updated.getSpecialization());
-        assertTrue(facade.authenticateTrainer(created.getUsername(), created.getPassword()));
+        assertTrue(facade.authenticateTrainer(created.getUsername(), created.getGeneratedPassword()));
 
         ctx.close();
     }
@@ -91,14 +91,14 @@ class HibernateProfileFlowTest {
         training.setTrainingDate(LocalDate.of(2026, 5, 17));
         training.setTrainingDurationMinutes(40);
 
-        Training created = facade.addTraining(trainee.getUsername(), trainee.getPassword(), training);
+        Training created = facade.addTraining(trainee.getUsername(), trainee.getGeneratedPassword(), training);
 
         assertNotNull(created.getId());
         assertEquals(1, facade.getTraineeTrainings(
-                trainee.getUsername(), trainee.getPassword(), null, null, "Eva Mills", "CARDIO").size());
+                trainee.getUsername(), trainee.getGeneratedPassword(), null, null, "Eva Mills", "CARDIO").size());
         assertEquals(1, facade.getTrainerTrainings(
-                createdTrainer.getUsername(), createdTrainer.getPassword(), null, null, "Tom Hill").size());
-        assertFalse(facade.getUnassignedTrainers(trainee.getUsername(), trainee.getPassword())
+                createdTrainer.getUsername(), createdTrainer.getGeneratedPassword(), null, null, "Tom Hill").size());
+        assertFalse(facade.getUnassignedTrainers(trainee.getUsername(), trainee.getGeneratedPassword())
                 .stream()
                 .anyMatch(unassigned -> createdTrainer.getUsername().equals(unassigned.getUsername())));
 
@@ -116,7 +116,7 @@ class HibernateProfileFlowTest {
         Trainer createdTrainer = facade.createTrainer(trainer);
 
         Trainee updated = facade.updateTraineeTrainers(
-                trainee.getUsername(), trainee.getPassword(), List.of(createdTrainer.getUsername()));
+                trainee.getUsername(), trainee.getGeneratedPassword(), List.of(createdTrainer.getUsername()));
 
         assertEquals(1, updated.getTrainers().size());
 

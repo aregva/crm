@@ -2,7 +2,6 @@ package com.gym.crm.rest.controller;
 
 import com.gym.crm.domain.Training;
 import com.gym.crm.facade.GymFacade;
-import com.gym.crm.rest.auth.AuthenticatedUser;
 import com.gym.crm.rest.auth.RestAuthenticationService;
 import com.gym.crm.rest.dto.AddTrainingRequest;
 import com.gym.crm.rest.dto.TraineeTrainingResponse;
@@ -36,12 +35,10 @@ public class TrainingRestController {
             @Valid @RequestBody AddTrainingRequest request,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, traineeUsername);
+        authenticationService.requireTrainee(httpRequest, traineeUsername);
 
         facade.addTraining(
                 traineeUsername,
-                user.password(),
                 trainerUsername,
                 request.trainingName(),
                 request.trainingDate(),
@@ -60,12 +57,10 @@ public class TrainingRestController {
             @RequestParam(required = false) String trainingType,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, username);
+        authenticationService.requireTrainee(httpRequest, username);
 
         return facade.getTraineeTrainings(
                         username,
-                        user.password(),
                         periodFrom,
                         periodTo,
                         trainerName,
@@ -84,12 +79,10 @@ public class TrainingRestController {
             @RequestParam(required = false) String traineeName,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainer(httpRequest, username);
+        authenticationService.requireTrainer(httpRequest, username);
 
         return facade.getTrainerTrainings(
                         username,
-                        user.password(),
                         periodFrom,
                         periodTo,
                         traineeName

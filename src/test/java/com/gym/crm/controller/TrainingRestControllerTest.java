@@ -23,7 +23,7 @@ class TrainingRestControllerTest extends BaseControllerTest {
     void addTraining() throws Exception {
 
         when(auth.requireTrainee(any(), eq("trainee")))
-                .thenReturn(new AuthenticatedUser("trainee", "pass", RestUserRole.TRAINEE));
+                .thenReturn(new AuthenticatedUser("trainee", RestUserRole.TRAINEE));
 
         mockMvc.perform(post("/api/trainings/trainees/trainee/trainers/trainer")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -38,7 +38,6 @@ class TrainingRestControllerTest extends BaseControllerTest {
 
         verify(facade).addTraining(
                 eq("trainee"),
-                eq("pass"),
                 eq("trainer"),
                 eq("Gym"),
                 any(),

@@ -39,8 +39,9 @@ class TraineeServiceTest {
 
         assertNotNull(created.getId());
         assertEquals("John.Smith", created.getUsername());
-        assertNotNull(created.getPassword());
-        assertEquals(10, created.getPassword().length());
+        assertNotNull(created.getGeneratedPassword());
+        assertEquals(10, created.getGeneratedPassword().length());
+        assertTrue(created.getPassword().startsWith("$2"));
         ctx.close();
     }
 
@@ -154,7 +155,7 @@ class TraineeServiceTest {
         update.setDateOfBirth(LocalDate.of(1990, 2, 3));
         update.setActive(false);
 
-        Optional<Trainee> updated = traineeService.update(created.getUsername(), created.getPassword(), update);
+        Optional<Trainee> updated = traineeService.update(created.getUsername(), created.getGeneratedPassword(), update);
 
         assertTrue(updated.isPresent());
         assertEquals("Lina", updated.get().getFirstName());
@@ -168,7 +169,7 @@ class TraineeServiceTest {
         Trainee created = traineeService.create(trainee("Paul", "Rivers"));
 
         assertThrows(IllegalArgumentException.class,
-                () -> traineeService.changePassword(created.getUsername(), created.getPassword(), " "));
+                () -> traineeService.changePassword(created.getUsername(), created.getGeneratedPassword(), " "));
         ctx.close();
     }
 
@@ -177,13 +178,13 @@ class TraineeServiceTest {
         Trainee created = traineeService.create(trainee("Nora", "White"));
 
         assertThrows(IllegalStateException.class,
-                () -> traineeService.activate(created.getUsername(), created.getPassword()));
+                () -> traineeService.activate(created.getUsername(), created.getGeneratedPassword()));
 
-        traineeService.deactivate(created.getUsername(), created.getPassword());
+        traineeService.deactivate(created.getUsername(), created.getGeneratedPassword());
         assertThrows(IllegalStateException.class,
-                () -> traineeService.deactivate(created.getUsername(), created.getPassword()));
+                () -> traineeService.deactivate(created.getUsername(), created.getGeneratedPassword()));
 
-        traineeService.activate(created.getUsername(), created.getPassword());
+        traineeService.activate(created.getUsername(), created.getGeneratedPassword());
         assertTrue(traineeService.selectByUsername(created.getUsername()).orElseThrow().isActive());
         ctx.close();
     }
@@ -192,7 +193,7 @@ class TraineeServiceTest {
     void deleteByUsername_ShouldHardDeleteProfile() {
         Trainee created = traineeService.create(trainee("Owen", "Lake"));
 
-        traineeService.deleteByUsername(created.getUsername(), created.getPassword());
+        traineeService.deleteByUsername(created.getUsername(), created.getGeneratedPassword());
 
         assertTrue(traineeService.selectByUsername(created.getUsername()).isEmpty());
         ctx.close();
@@ -213,7 +214,7 @@ class TraineeServiceTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> traineeService.updateTrainers(
-                        created.getUsername(), created.getPassword(), List.of("missing.trainer")));
+                        created.getUsername(), created.getGeneratedPassword(), List.of("missing.trainer")));
         ctx.close();
     }
 
@@ -229,7 +230,7 @@ class TraineeServiceTest {
         Trainer createdTrainer = trainerService.create(trainer);
 
         Trainee updated = traineeService.updateTrainers(
-                created.getUsername(), created.getPassword(), List.of(createdTrainer.getUsername()));
+                created.getUsername(), created.getGeneratedPassword(), List.of(createdTrainer.getUsername()));
 
         assertEquals(1, updated.getTrainers().size());
         ctx.close();

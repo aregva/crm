@@ -5,7 +5,6 @@ import com.gym.crm.domain.Trainer;
 import com.gym.crm.domain.Training;
 import com.gym.crm.domain.TrainingType;
 import com.gym.crm.facade.GymFacade;
-import com.gym.crm.rest.auth.AuthenticatedUser;
 import com.gym.crm.rest.auth.RestAuthenticationService;
 import com.gym.crm.rest.dto.*;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,7 +44,7 @@ public class TraineeRestController {
 
         Trainee created = facade.createTrainee(trainee);
 
-        return new RegistrationResponse(created.getUsername(), created.getPassword());
+        return new RegistrationResponse(created.getUsername(), created.getGeneratedPassword());
     }
 
     @GetMapping("/{username}")
@@ -53,10 +52,9 @@ public class TraineeRestController {
             @PathVariable String username,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, username);
+        authenticationService.requireTrainee(httpRequest, username);
 
-        Trainee trainee = facade.getTraineeByUsername(username, user.password())
+        Trainee trainee = facade.getTraineeByUsername(username)
                 .orElseThrow();
 
         return toTraineeProfileResponse(trainee);
@@ -68,8 +66,7 @@ public class TraineeRestController {
             @Valid @RequestBody UpdateTraineeProfileRequest request,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, username);
+        authenticationService.requireTrainee(httpRequest, username);
 
         Trainee update = new Trainee();
         update.setFirstName(request.firstName());
@@ -78,7 +75,7 @@ public class TraineeRestController {
         update.setAddress(request.address());
         update.setActive(request.isActive());
 
-        Trainee updated = facade.updateTrainee(username, user.password(), update)
+        Trainee updated = facade.updateTrainee(username, update)
                 .orElseThrow();
 
         return toTraineeProfileResponse(updated);
@@ -89,10 +86,9 @@ public class TraineeRestController {
             @PathVariable String username,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, username);
+        authenticationService.requireTrainee(httpRequest, username);
 
-        facade.deleteTrainee(username, user.password());
+        facade.deleteTrainee(username);
 
         return ResponseEntity.noContent().build();
     }
@@ -104,10 +100,9 @@ public class TraineeRestController {
 
         requireText(username, "username");
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, username);
+        authenticationService.requireTrainee(httpRequest, username);
 
-        return facade.getUnassignedTrainers(username, user.password())
+        return facade.getUnassignedTrainers(username)
                 .stream()
                 .map(this::toTrainerSummaryResponse)
                 .toList();
@@ -119,8 +114,7 @@ public class TraineeRestController {
             @Valid @RequestBody UpdateTraineeTrainersRequest request,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, username);
+        authenticationService.requireTrainee(httpRequest, username);
 
         List<String> trainerUsernames = request.trainersList()
                 .stream()
@@ -129,7 +123,6 @@ public class TraineeRestController {
 
         Trainee updated = facade.updateTraineeTrainers(
                 username,
-                user.password(),
                 trainerUsernames
         );
 
@@ -149,12 +142,10 @@ public class TraineeRestController {
 
         requireText(username, "username");
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, username);
+        authenticationService.requireTrainee(httpRequest, username);
 
         return facade.getTraineeTrainings(
                         username,
-                        user.password(),
                         periodFrom,
                         periodTo,
                         trainerName,
@@ -171,13 +162,12 @@ public class TraineeRestController {
             @Valid @RequestBody ActiveStatusRequest request,
             HttpServletRequest httpRequest) {
 
-        AuthenticatedUser user =
-                authenticationService.requireTrainee(httpRequest, username);
+        authenticationService.requireTrainee(httpRequest, username);
 
         if (request.isActive()) {
-            facade.activateTrainee(username, user.password());
+            facade.activateTrainee(username);
         } else {
-            facade.deactivateTrainee(username, user.password());
+            facade.deactivateTrainee(username);
         }
 
         return ResponseEntity.ok().build();
