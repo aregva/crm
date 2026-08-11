@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import java.time.LocalDate;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -150,6 +151,54 @@ class TrainingServiceTest {
                 LocalDate.of(2026, 5, 1),
                 LocalDate.of(2026, 5, 31),
                 "Peter Young").size());
+        ctx.close();
+    }
+
+    @Test
+    void cancelTraining_ShouldRemoveTraining() {
+        Trainee trainee = traineeService.create(trainee("Owen", "Marsh"));
+        Trainer trainer = trainerService.create(trainer("Ivy", "Cole"));
+        Training training = validTraining(trainee.getId(), trainer.getId());
+        training.setTrainingDate(LocalDate.now().plusDays(5));
+        Training created = trainingService.create(training);
+
+        trainingService.cancelTraining(trainee.getUsername(), created.getId());
+
+        assertTrue(trainingService.select(created.getId()).isEmpty());
+        ctx.close();
+    }
+
+    @Test
+    void cancelTraining_PastDate_ShouldThrowIllegalStateException() {
+        Trainee trainee = traineeService.create(trainee("Nina", "Dale"));
+        Trainer trainer = trainerService.create(trainer("Leo", "Frost"));
+        Training training = validTraining(trainee.getId(), trainer.getId());
+        training.setTrainingDate(LocalDate.now().minusDays(1));
+        Training created = trainingService.create(training);
+
+        assertThrows(IllegalStateException.class,
+                () -> trainingService.cancelTraining(trainee.getUsername(), created.getId()));
+        ctx.close();
+    }
+
+    @Test
+    void cancelTraining_WrongTrainee_ShouldThrowSecurityException() {
+        Trainee trainee = traineeService.create(trainee("Sam", "Reed"));
+        Trainee otherTrainee = traineeService.create(trainee("Amy", "Blake"));
+        Trainer trainer = trainerService.create(trainer("Tara", "Voss"));
+        Training training = validTraining(trainee.getId(), trainer.getId());
+        training.setTrainingDate(LocalDate.now().plusDays(5));
+        Training created = trainingService.create(training);
+
+        assertThrows(SecurityException.class,
+                () -> trainingService.cancelTraining(otherTrainee.getUsername(), created.getId()));
+        ctx.close();
+    }
+
+    @Test
+    void cancelTraining_UnknownId_ShouldThrowNoSuchElementException() {
+        assertThrows(NoSuchElementException.class,
+                () -> trainingService.cancelTraining("anyone", 987654321L));
         ctx.close();
     }
 

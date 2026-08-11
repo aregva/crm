@@ -23,6 +23,12 @@ public class TrainingDao {
         return sessionFactory.getCurrentSession().merge(training);
     }
 
+    @Transactional
+    public void delete(Training training) {
+        var session = sessionFactory.getCurrentSession();
+        session.remove(session.contains(training) ? training : session.merge(training));
+    }
+
     public Optional<Training> findById(Long id) {
         return Optional.ofNullable(sessionFactory.getCurrentSession().get(Training.class, id));
     }

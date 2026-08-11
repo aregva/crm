@@ -23,3 +23,21 @@ security:
   jwt:
     secret: change-this-development-secret-at-least-32-bytes-long
     expiration-minutes: 60
+    service:
+      audience: trainer-workload-service
+      ttl-seconds: 60
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+
+resilience4j:
+  trainer-workload:
+    sliding-window-size: 10
+    minimum-number-of-calls: 5
+    failure-rate-threshold: 50
+    wait-duration-in-open-state-seconds: 10
+    permitted-calls-in-half-open-state: 3

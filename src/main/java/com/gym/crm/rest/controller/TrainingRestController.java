@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/trainings")
@@ -46,6 +47,21 @@ public class TrainingRestController {
         );
 
         return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{trainingId}")
+    public ResponseEntity<Void> cancelTraining(
+            @PathVariable Long trainingId,
+            HttpServletRequest httpRequest) {
+
+        Training training = facade.getTraining(trainingId)
+                .orElseThrow(() -> new NoSuchElementException("Training not found: " + trainingId));
+
+        authenticationService.requireTrainee(httpRequest, training.getTrainee().getUsername());
+
+        facade.cancelTraining(training.getTrainee().getUsername(), trainingId);
+
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/trainee/{username}")

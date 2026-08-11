@@ -9,14 +9,20 @@ import com.gym.crm.domain.Trainee;
 import com.gym.crm.domain.Trainer;
 import com.gym.crm.domain.Training;
 import com.gym.crm.domain.TrainingType;
+import com.gym.crm.integration.workload.ActionType;
+import com.gym.crm.integration.workload.TrainerWorkloadClientService;
+import com.gym.crm.integration.workload.TrainerWorkloadRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 @Service
@@ -29,19 +35,22 @@ public class TrainingService {
     private final TrainingTypeDao trainingTypeDao;
     private final PasswordEncoder passwordEncoder;
     private final GymMetrics metrics;
+    private final TrainerWorkloadClientService workloadClientService;
 
     public TrainingService(TrainingDao trainingDao,
                            TraineeDao traineeDao,
                            TrainerDao trainerDao,
                            TrainingTypeDao trainingTypeDao,
                            PasswordEncoder passwordEncoder,
-                           GymMetrics metrics) {
+                           GymMetrics metrics,
+                           TrainerWorkloadClientService workloadClientService) {
         this.trainingDao = trainingDao;
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.trainingTypeDao = trainingTypeDao;
         this.passwordEncoder = passwordEncoder;
         this.metrics = metrics;
+        this.workloadClientService = workloadClientService;
     }
 
     @Transactional
@@ -52,7 +61,50 @@ public class TrainingService {
         Training saved = trainingDao.save(training);
         metrics.incrementTrainingCreated();
         log.info("Created training id={}, name={}", saved.getId(), saved.getTrainingName());
+        notifyWorkload(saved, ActionType.ADD);
         return saved;
+    }
+
+    @Transactional
+    public void cancelTraining(String traineeUsername, Long trainingId) {
+        ValidationUtils.requireText(traineeUsername, "traineeUsername");
+        ValidationUtils.requireNonNull(trainingId, "trainingId");
+
+        Training training = trainingDao.findById(trainingId)
+                .orElseThrow(() -> new NoSuchElementException("Training not found: " + trainingId));
+
+        if (!training.getTrainee().getUsername().equals(traineeUsername)) {
+            throw new SecurityException("Training does not belong to trainee: " + traineeUsername);
+        }
+        if (training.getTrainingDate().isBefore(LocalDate.now())) {
+            throw new IllegalStateException("Cannot cancel a training that has already taken place");
+        }
+
+        trainingDao.delete(training);
+        log.info("Cancelled training id={}, name={}", training.getId(), training.getTrainingName());
+        notifyWorkload(training, ActionType.DELETE);
+    }
+
+    private void notifyWorkload(Training training, ActionType actionType) {
+        TrainerWorkloadRequest request = new TrainerWorkloadRequest(
+                training.getTrainer().getUsername(),
+                training.getTrainer().getFirstName(),
+                training.getTrainer().getLastName(),
+                training.getTrainer().isActive(),
+                training.getTrainingDate(),
+                training.getTrainingDurationMinutes(),
+                actionType);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    workloadClientService.notify(request);
+                }
+            });
+        } else {
+            workloadClientService.notify(request);
+        }
     }
 
     @Transactional

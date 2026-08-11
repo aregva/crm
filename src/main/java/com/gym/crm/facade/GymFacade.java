@@ -121,6 +121,9 @@ public class GymFacade {
                 trainingDurationMinutes);
     }
     public Optional<Training> getTraining(Long id) { return trainingService.select(id); }
+    public void cancelTraining(String traineeUsername, Long trainingId) {
+        trainingService.cancelTraining(traineeUsername, trainingId);
+    }
     public List<Training> getTraineeTrainings(String traineeUsername,
                                               String password,
                                               LocalDate fromDate,
