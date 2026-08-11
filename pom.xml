@@ -30,7 +30,6 @@
         <hibernate.validator.version>8.0.1.Final</hibernate.validator.version>
         <swagger.annotations.version>1.6.14</swagger.annotations.version>
         <spring-cloud.version>2025.0.0</spring-cloud.version>
-        <resilience4j.version>2.2.0</resilience4j.version>
     </properties>
 
     <dependencyManagement>
@@ -76,21 +75,15 @@
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- Microservices: discovery, inter-service calls, resilience -->
+        <!-- Microservices: discovery, async messaging -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>io.github.resilience4j</groupId>
-            <artifactId>resilience4j-circuitbreaker</artifactId>
-            <version>${resilience4j.version}</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-activemq</artifactId>
         </dependency>
 
         <!-- Actuator -->
@@ -213,6 +206,13 @@
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
             <version>2.9.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Embedded vm:// broker for tests, so JMS sends don't need a real network broker -->
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>activemq-broker</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

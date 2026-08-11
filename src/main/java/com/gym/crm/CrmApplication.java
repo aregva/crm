@@ -3,7 +3,6 @@ package com.gym.crm;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
-import org.springframework.cloud.openfeign.EnableFeignClients;
 
 /**
  * Excludes Boot's JPA autoconfiguration: this app wires its own classic-Hibernate
@@ -14,7 +13,6 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
  * at runtime.
  */
 @SpringBootApplication(exclude = HibernateJpaAutoConfiguration.class)
-@EnableFeignClients
 public class CrmApplication {
 
     public static void main(String[] args) {

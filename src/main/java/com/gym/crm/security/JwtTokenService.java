@@ -70,32 +70,6 @@ public class JwtTokenService {
         return new GeneratedToken(signedContent + "." + sign(signedContent), expiresAt);
     }
 
-    /**
-     * Mints a short-lived, role-less bearer token for service-to-service calls
-     * (e.g. gym-crm calling trainer-workload-service), using the same HMAC-SHA256
-     * compact-JWT scheme and shared secret as user-facing tokens.
-     */
-    public String generateServiceToken(String subject, String audience, Duration ttl) {
-        Instant issuedAt = clock.instant();
-        Instant expiresAt = issuedAt.plus(ttl);
-
-        Map<String, Object> header = new LinkedHashMap<>();
-        header.put("alg", "HS256");
-        header.put("typ", "JWT");
-
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("sub", subject);
-        payload.put("aud", audience);
-        payload.put("iat", issuedAt.getEpochSecond());
-        payload.put("exp", expiresAt.getEpochSecond());
-        payload.put("jti", UUID.randomUUID().toString());
-
-        String encodedHeader = encodeJson(header);
-        String encodedPayload = encodeJson(payload);
-        String signedContent = encodedHeader + "." + encodedPayload;
-        return signedContent + "." + sign(signedContent);
-    }
-
     public Optional<JwtClaims> parseAndValidate(String token) {
         if (token == null || token.isBlank()) {
             return Optional.empty();

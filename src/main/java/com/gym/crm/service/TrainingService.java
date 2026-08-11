@@ -10,8 +10,8 @@ import com.gym.crm.domain.Trainer;
 import com.gym.crm.domain.Training;
 import com.gym.crm.domain.TrainingType;
 import com.gym.crm.integration.workload.ActionType;
-import com.gym.crm.integration.workload.TrainerWorkloadClientService;
-import com.gym.crm.integration.workload.TrainerWorkloadRequest;
+import com.gym.crm.integration.workload.TrainerWorkloadMessage;
+import com.gym.crm.integration.workload.TrainerWorkloadMessageProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,7 +35,7 @@ public class TrainingService {
     private final TrainingTypeDao trainingTypeDao;
     private final PasswordEncoder passwordEncoder;
     private final GymMetrics metrics;
-    private final TrainerWorkloadClientService workloadClientService;
+    private final TrainerWorkloadMessageProducer workloadMessageProducer;
 
     public TrainingService(TrainingDao trainingDao,
                            TraineeDao traineeDao,
@@ -43,14 +43,14 @@ public class TrainingService {
                            TrainingTypeDao trainingTypeDao,
                            PasswordEncoder passwordEncoder,
                            GymMetrics metrics,
-                           TrainerWorkloadClientService workloadClientService) {
+                           TrainerWorkloadMessageProducer workloadMessageProducer) {
         this.trainingDao = trainingDao;
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.trainingTypeDao = trainingTypeDao;
         this.passwordEncoder = passwordEncoder;
         this.metrics = metrics;
-        this.workloadClientService = workloadClientService;
+        this.workloadMessageProducer = workloadMessageProducer;
     }
 
     @Transactional
@@ -86,7 +86,7 @@ public class TrainingService {
     }
 
     private void notifyWorkload(Training training, ActionType actionType) {
-        TrainerWorkloadRequest request = new TrainerWorkloadRequest(
+        TrainerWorkloadMessage message = new TrainerWorkloadMessage(
                 training.getTrainer().getUsername(),
                 training.getTrainer().getFirstName(),
                 training.getTrainer().getLastName(),
@@ -99,11 +99,11 @@ public class TrainingService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    workloadClientService.notify(request);
+                    workloadMessageProducer.send(message);
                 }
             });
         } else {
-            workloadClientService.notify(request);
+            workloadMessageProducer.send(message);
         }
     }
 

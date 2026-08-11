@@ -23,6 +23,7 @@ import java.util.UUID;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class TransactionLoggingFilter extends OncePerRequestFilter {
     public static final String TRANSACTION_ID_HEADER = "X-Transaction-Id";
+    public static final String TRANSACTION_ID_MDC_KEY = "transactionId";
 
     private static final Logger log = LoggerFactory.getLogger(TransactionLoggingFilter.class);
     private static final int MAX_LOGGED_BODY_LENGTH = 2_000;
@@ -32,7 +33,7 @@ public class TransactionLoggingFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String transactionId = resolveTransactionId(request);
-        MDC.put("transactionId", transactionId);
+        MDC.put(TRANSACTION_ID_MDC_KEY, transactionId);
         response.setHeader(TRANSACTION_ID_HEADER, transactionId);
 
         ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
@@ -58,7 +59,7 @@ public class TransactionLoggingFilter extends OncePerRequestFilter {
             throw ex;
         } finally {
             wrappedResponse.copyBodyToResponse();
-            MDC.remove("transactionId");
+            MDC.remove(TRANSACTION_ID_MDC_KEY);
         }
     }
 
